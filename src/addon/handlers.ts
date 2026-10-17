@@ -107,8 +107,10 @@ export async function manifestHandler(ctx: AddonContext): Promise<Record<string,
     const genres = (playlist?.data.genres || []).map(g => (g === '~SETTINGS~' || g === 'Settings' ? SETTINGS_GENRE : g));
     if (playlist) void epgSourceIds(record.config, playlist).catch(() => undefined);
     const m = appConfig.manifest;
+    const addonId = record.legacy ? m.id : `${m.id}.${record.id}`;
+    const catalogId = record.legacy ? m.catalogId : `${m.catalogId}_${record.id}`;
     return {
-        id: m.id,
+        id: addonId,
         version: m.version,
         name: record.label && !record.legacy ? `${m.name} · ${record.label}` : m.name,
         description: m.description,
@@ -118,7 +120,7 @@ export async function manifestHandler(ctx: AddonContext): Promise<Record<string,
         idPrefixes: ['tv'],
         catalogs: [{
             type: 'tv',
-            id: m.catalogId,
+            id: catalogId,
             name: record.label && !record.legacy ? `${m.catalogName} · ${record.label}` : m.catalogName,
             extra: [
                 { name: 'genre', isRequired: false, options: [...new Set([...genres, SETTINGS_GENRE])] },
