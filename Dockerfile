@@ -1,31 +1,43 @@
-# Usa un'immagine Node.js come base
-FROM node:20-slim
+# ---- build: compila TypeScript/TSX in dist/
+FROM node:22-slim AS build
+WORKDIR /app
+# Strumenti per compilare better-sqlite3 se non esiste un binario precompilato per l'architettura
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 make g++ && \
+    rm -rf /var/lib/apt/lists/*
+# Header di Node già presenti nell'immagine: niente download durante la compilazione
+ENV npm_config_nodedir=/usr/local
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build && npm prune --omit=dev
 
-# Imposta la directory di lavoro
+# ---- runtime
+FROM node:22-slim
 WORKDIR /app
 
-# Installa git, Python e pip (se necessario)
+# Python per gli script generatore/resolver degli utenti
 RUN apt-get update && \
-    apt-get install -y git python3 python3-pip && \
-    pip3 install requests --break-system-packages && \
+    apt-get install -y --no-install-recommends python3 python3-requests ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Copia i file del progetto
-COPY package.json package-lock.json ./
-RUN npm install
+ENV NODE_ENV=production \
+    PORT=10000 \
+    DATA_DIR=/app/data
 
-# Copia il resto del codice
-COPY . .
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json addon-config.json link.epg.remapping ./
+COPY public ./public
 
-# Crea directory per i dati (cache M3U + EPG in memoria per sessione; nessuna persistenza)
+# Il processo (e quindi gli script Python) non gira come root
 RUN mkdir -p /app/data && chown -R node:node /app/data
+USER node
 
-# Crea la directory temp e imposta i permessi (come nel Dockerfile di Hugging Face)
-RUN mkdir -p /app/temp && \
-    chmod 777 /app/temp
-
-# Esponi la porta 10000 (usata dal server)
 EXPOSE 10000
+VOLUME ["/app/data"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
+    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||10000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-# Avvia l'add-on
-CMD ["node", "index.js"]
+CMD ["node", "dist/index.js"]

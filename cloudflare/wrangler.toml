@@ -1,0 +1,7 @@
+# npx wrangler deploy  (dopo: npx wrangler secret put ORIGIN_URL / ORIGIN_SECRET)
+name = "omg-tv"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Dominio personalizzato (facoltativo): decommenta e imposta il tuo hostname
+# routes = [{ pattern = "tv.example.com", custom_domain = true }]

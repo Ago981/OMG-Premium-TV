@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Build output
+dist/
+
 # Runtime data (cache, EPG DBs – no persistence by design)
 data/
 
@@ -9,8 +12,6 @@ temp/
 tmp/
 *.log
 
-# Local config (can contain private URLs)
-addon-config.json
 
 # Environment and secrets
 .env

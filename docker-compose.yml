@@ -1,0 +1,54 @@
+# OMG Premium TV — addon + PostgreSQL + Cloudflare Tunnel
+#
+# 1. Copia .env.example in .env e compila le variabili
+# 2. docker compose up -d
+#
+# Con il tunnel l'addon NON espone porte su Internet: tutto il traffico passa da Cloudflare
+# e il tuo IP resta nascosto. Senza tunnel, decommenta "ports" nel servizio addon.
+
+services:
+  addon:
+    build: .
+    image: omg-premium-tv:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://omg:${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD in .env}@db:5432/omg
+      DATA_DIR: /app/data
+    volumes:
+      - addon-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    # ports:
+    #   - "10000:10000"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: omg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: omg
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omg -d omg"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cloudflare Tunnel: nel pannello Zero Trust crea un tunnel, imposta come servizio
+  # http://addon:10000 sul tuo hostname pubblico e copia qui il token.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?imposta CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - addon
+
+volumes:
+  addon-data:
+  db-data:

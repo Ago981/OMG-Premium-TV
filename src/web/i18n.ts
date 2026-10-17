@@ -1,8 +1,10 @@
+import { I18N_EXTRA } from './i18n-extra';
+
 /**
  * UI translations: English (default), Italian, Spanish, French.
  * Keys are used in data-i18n and data-i18n-placeholder attributes.
  */
-const I18N = {
+export const I18N: Record<string, Record<string, string>> = {
   en: {
     lang_en: '🇬🇧 ENG',
     lang_it: '🇮🇹 ITA',
@@ -661,4 +663,7 @@ const I18N = {
   }
 };
 
-module.exports = { I18N };
+// Le chiavi nuove si aggiungono alle esistenti (es/fr ripiegano sull'inglese per quelle mancanti)
+for (const [lang, entries] of Object.entries(I18N_EXTRA)) {
+    I18N[lang] = { ...(I18N[lang] || {}), ...entries };
+}

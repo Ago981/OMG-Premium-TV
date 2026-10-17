@@ -1,0 +1,55 @@
+import fs from 'fs';
+import path from 'path';
+import { createApp } from './app';
+import { closeDatabase, initDatabase } from './db';
+import { env } from './env';
+import * as epg from './epg/epg-service';
+import * as logger from './logger';
+import { gcPlaylists, sweepMemory } from './playlist/playlist-service';
+import { restoreSchedules } from './runtime';
+import { initAdminPassword } from './security/admin';
+import { initAppSecret } from './security/crypto';
+import { listConfigs } from './store/config-store';
+
+function every(ms: number, task: () => Promise<unknown> | void, name: string): void {
+    setInterval(() => {
+        Promise.resolve(task()).catch(e => logger.error('_', `${name} failed:`, logger.errMsg(e)));
+    }, ms).unref();
+}
+
+async function main(): Promise<void> {
+    fs.mkdirSync(env.dataDir, { recursive: true });
+    const database = await initDatabase();
+    logger.log('_', `Database: ${database.kind}${database.kind === 'sqlite' ? ` (${path.join(env.dataDir, 'omg.db')})` : ''}`);
+    await initAppSecret();
+    await initAdminPassword();
+    await epg.resetInterrupted();
+    await restoreSchedules();
+
+    // Scheduler: EPG condivisi, pulizia programmi/sorgenti, playlist non più usate
+    every(5 * 60 * 1000, () => epg.refreshStaleSources(), 'EPG refresh');
+    every(60 * 60 * 1000, () => epg.cleanup(), 'EPG cleanup');
+    every(5 * 60 * 1000, () => sweepMemory(), 'Playlist memory sweep');
+    every(6 * 60 * 60 * 1000, async () => gcPlaylists((await listConfigs()).map(r => r.config)), 'Playlist GC');
+    setTimeout(() => void epg.refreshStaleSources().catch(() => undefined), 10000).unref();
+
+    const server = createApp().listen(env.port, env.host, () => {
+        logger.log('_', `OMG addon started on http://${env.host}:${env.port}` + (env.publicBaseUrl ? ` — public URL ${env.publicBaseUrl}` : ''));
+        if (!env.publicBaseUrl) logger.warn('_', 'PUBLIC_BASE_URL not set: URLs are built from the request Host header');
+    });
+
+    const shutdown = (signal: string) => {
+        logger.log('_', `${signal} received, shutting down`);
+        server.close(() => {
+            closeDatabase().finally(() => process.exit(0));
+        });
+        setTimeout(() => process.exit(0), 10000).unref();
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+}
+
+main().catch(e => {
+    console.error('Fatal startup error:', e);
+    process.exit(1);
+});
