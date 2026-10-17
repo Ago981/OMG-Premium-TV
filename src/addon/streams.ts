@@ -135,16 +135,16 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
             behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
         }];
     }
-    // Proxy non funzionante: con "forza proxy" si mostra comunque lo stream originale
-    return cfg.force_proxy ? [{ ...directStream(input, cfg, ''), title: `${input.originalName} [${langAbbr(cfg)}]` }] : [];
+    // Il proxy non riesce ad aprire questo stream: si offre il link diretto (dall'IP dell'utente), segnalato
+    return [{ ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName} [${langAbbr(cfg)}]\n[${proxyLabel(kind)} ✗ → direct]` }];
 }
 
+/** Con un proxy configurato tutto passa dal proxy; senza, gli stream sono diretti (IP dell'utente). */
 async function originalStreams(inputs: StreamInput[], ctx: StreamContext, kind: ProxyKind | null): Promise<StremioStream[]> {
     const out: StremioStream[] = [];
     for (const input of inputs) {
-        // "Forza proxy" nasconde gli stream diretti solo se un proxy è effettivamente configurato
-        if (!ctx.config.force_proxy || !kind) out.push(directStream(input, ctx.config));
         if (kind) out.push(...await proxyStreams(input, ctx, kind));
+        else out.push(directStream(input, ctx.config));
     }
     return out;
 }
@@ -185,8 +185,8 @@ export async function buildStreams(channel: Channel, ctx: StreamContext): Promis
         try {
             const resolved = await resolvedStreams(channel, ctx);
             if (resolved.length) {
-                if (!cfg.force_proxy || !kind) streams.push(...resolved);
-                if (kind) {
+                if (!kind) streams.push(...resolved);
+                else {
                     for (const r of resolved) {
                         streams.push(...await proxyStreams({ name: r.name, originalName: r.title, url: r.url, headers: r.headers || {} }, ctx, kind));
                     }

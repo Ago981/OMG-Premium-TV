@@ -37,6 +37,8 @@ Riscrittura completa in **TypeScript/TSX** con architettura multi-utente. Guida 
 - **🔀 EasyProxy**: supporto a [EasyProxy](https://github.com/realbestia1/EasyProxy) oltre a MediaFlow Proxy, con riconoscimento automatico, pulsante "Verifica proxy" e chiavi **DRM ClearKey** lette dalle playlist (`#KODIPROP`).
 - **📱 Nuvio**: compatibilità con [Nuvio](https://github.com/tapframe/NuvioStreaming); gli header di riproduzione sono inviati anche nel formato standard `proxyHeaders`.
 - **☁️ Cloudflare**: Tunnel (nessuna porta aperta) o Worker (`cloudflare/worker.js`) per nascondere l'indirizzo del server; link degli stream mascherati e cifrati (`/s/<token>`).
+- **🛡️ Uscita da Cloudflare WARP**: tutto ciò che il server scarica (playlist, EPG, verifiche) esce da un container WARP incluso nel compose; senza WARP funzionante i download si fermano invece di usare il tuo IP.
+- **🔀 Proxy consigliato**: con un proxy configurato tutto passa da lì, playlist compresa (l'opzione "Forza proxy" non serve più); senza proxy gli stream partono dal dispositivo dell'utente.
 - **🐘 PostgreSQL**: database unico per configurazioni, playlist ed EPG (`docker-compose.yml` lo avvia in automatico).
 
 ### 🔧 Miglioramenti e sicurezza

@@ -74,6 +74,13 @@ export const env = {
      * per raggiungere servizi interni (SSRF). Attivalo se le tue playlist/proxy sono in LAN.
      */
     allowPrivateUrls: bool('ALLOW_PRIVATE_URLS', false),
+    /**
+     * Proxy di uscita per TUTTE le richieste del server (playlist, EPG, verifiche, proxy degli utenti).
+     * Es. http://warp:8080 o socks5://warp:1080 (container WARP del docker-compose).
+     */
+    outboundProxy: str('OUTBOUND_PROXY'),
+    /** Se true il server non esce mai direttamente: senza OUTBOUND_PROXY funzionante le richieste falliscono. */
+    outboundProxyRequired: bool('OUTBOUND_PROXY_REQUIRED', false),
     httpTimeoutMs: int('HTTP_TIMEOUT_MS', 60000),
     maxDownloadMb: int('MAX_DOWNLOAD_MB', 300)
 };

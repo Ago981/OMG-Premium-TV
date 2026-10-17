@@ -25,8 +25,10 @@ export function runPython(script: string, args: string[], cwd: string, timeoutSe
         PYTHONIOENCODING: 'utf-8',
         PYTHONDONTWRITEBYTECODE: '1'
     };
-    if (process.env.HTTP_PROXY) childEnv.HTTP_PROXY = process.env.HTTP_PROXY;
-    if (process.env.HTTPS_PROXY) childEnv.HTTPS_PROXY = process.env.HTTPS_PROXY;
+    // Anche gli script escono dal proxy di uscita (requests usa HTTP(S)_PROXY; socks5 richiede PySocks)
+    if (env.outboundProxy) {
+        for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']) childEnv[k] = env.outboundProxy;
+    }
     return new Promise((resolve, reject) => {
         execFile(env.pythonBin, [script, ...args], {
             cwd,

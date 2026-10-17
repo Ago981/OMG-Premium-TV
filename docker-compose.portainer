@@ -16,12 +16,26 @@ services:
       - DATABASE_URL=postgres://omg:${POSTGRES_PASSWORD}@omg-db:5432/omg
       # Generatore playlist e resolver Python disattivati (PYTHON_ENABLED=true per attivarli)
       - PYTHON_ENABLED=${PYTHON_ENABLED:-false}
+      # Uscita del server da Cloudflare WARP (servizio omg-warp)
+      - OUTBOUND_PROXY=${OUTBOUND_PROXY:-http://omg-warp:8080}
+      - OUTBOUND_PROXY_REQUIRED=${OUTBOUND_PROXY_REQUIRED:-true}
     volumes:
       - omg-data:/app/data
     ports:
       - "10000:10000"
     depends_on:
       - omg-db
+      - omg-warp
+
+  omg-warp:
+    build: https://github.com/mccoy88f/OMG-Premium-TV.git#main:warp
+    image: omg-warp:latest
+    container_name: omg-premium-tv-warp
+    restart: unless-stopped
+    environment:
+      - WARP_LICENSE_KEY=${WARP_LICENSE_KEY:-}
+    volumes:
+      - omg-warp:/data
 
   omg-db:
     image: postgres:16-alpine
@@ -37,3 +51,4 @@ services:
 volumes:
   omg-data:
   omg-db:
+  omg-warp:

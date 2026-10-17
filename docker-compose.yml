@@ -1,10 +1,13 @@
-# OMG Premium TV — addon + PostgreSQL + Cloudflare Tunnel
+# OMG Premium TV — addon + PostgreSQL + Cloudflare WARP + Cloudflare Tunnel
 #
 # 1. Copia .env.example in .env e compila le variabili
 # 2. docker compose up -d
 #
-# Con il tunnel l'addon NON espone porte su Internet: tutto il traffico passa da Cloudflare
-# e il tuo IP resta nascosto. Senza tunnel, decommenta "ports" nel servizio addon.
+# - In entrata: con il Tunnel l'addon NON espone porte su Internet, gli utenti vedono solo Cloudflare.
+#   Senza tunnel, decommenta "ports" nel servizio addon.
+# - In uscita: tutto ciò che scarica il server (playlist senza proxy, EPG, verifiche, richieste ai
+#   proxy degli utenti) passa da WARP. Se WARP non funziona i download falliscono: il server non esce
+#   mai con il tuo IP (OUTBOUND_PROXY_REQUIRED=true).
 
 services:
   addon:
@@ -18,11 +21,16 @@ services:
       # Script Python (generatore playlist e resolver) disattivati: eseguono codice scaricato da URL
       # sul server. Per attivarli metti PYTHON_ENABLED=true nel file .env
       PYTHON_ENABLED: ${PYTHON_ENABLED:-false}
+      # Uscita del server da Cloudflare WARP (servizio "warp" qui sotto)
+      OUTBOUND_PROXY: ${OUTBOUND_PROXY:-http://warp:8080}
+      OUTBOUND_PROXY_REQUIRED: ${OUTBOUND_PROXY_REQUIRED:-true}
     volumes:
       - addon-data:/app/data
     depends_on:
       db:
         condition: service_healthy
+      warp:
+        condition: service_started
     # ports:
     #   - "10000:10000"
 
@@ -41,6 +49,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # Cloudflare WARP in userspace (wireproxy): proxy SOCKS5 :1080 e HTTP :8080 solo sulla rete interna.
+  # Al primo avvio registra un dispositivo WARP gratuito e salva il profilo nel volume.
+  warp:
+    build: ./warp
+    image: omg-warp:latest
+    restart: unless-stopped
+    environment:
+      WARP_LICENSE_KEY: ${WARP_LICENSE_KEY:-}
+    volumes:
+      - warp-data:/data
+
+  # Esempio: MediaFlow Proxy che esce anch'esso da WARP (decommenta se lo usi)
+  # mediaflow:
+  #   image: mhdzumair/mediaflow-proxy:latest
+  #   restart: unless-stopped
+  #   environment:
+  #     API_PASSWORD: ${MEDIAFLOW_PASSWORD}
+  #     PROXY_URL: socks5://warp:1080
+  #     ALL_PROXY: "true"
+  #   depends_on:
+  #     - warp
+
   # Cloudflare Tunnel: nel pannello Zero Trust crea un tunnel, imposta come servizio
   # http://addon:10000 sul tuo hostname pubblico e copia qui il token.
   cloudflared:
@@ -55,3 +85,4 @@ services:
 volumes:
   addon-data:
   db-data:
+  warp-data:

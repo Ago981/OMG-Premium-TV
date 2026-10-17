@@ -116,7 +116,14 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
     const c = props.c;
     return (
         <Step index={2}>
-            <p className="small muted" data-i18n="proxy_intro">Optional. A proxy (MediaFlow Proxy or EasyProxy) plays streams that need special headers, extractors or DRM ClearKey keys.</p>
+            <div className="info-box recommended">
+                <p><span className="badge ok" data-i18n="proxy_recommended">Recommended</span> <strong data-i18n="proxy_why_title">Why use a proxy</strong></p>
+                <ul>
+                    <li data-i18n="proxy_why_1">With a proxy (MediaFlow Proxy or EasyProxy) everything goes through it: the playlist download and every stream. Sources only see the proxy's IP.</li>
+                    <li data-i18n="proxy_why_2">It also plays streams that need special headers, extractors (DaddyLive, Vavoo…) or ClearKey DRM keys.</li>
+                    <li data-i18n="proxy_why_3">Without a proxy, streams are opened directly by your device, from your IP.</li>
+                </ul>
+            </div>
             <Field labelKey="proxy_type" label="Proxy type">
                 <select name="proxy_type">
                     <option value="auto" selected={c.proxy_type === 'auto'} data-i18n="proxy_type_auto">Detect automatically</option>
@@ -134,7 +141,6 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
                 <button type="button" className="secondary" data-action="proxy-test" data-i18n="proxy_test">Test proxy</button>
                 <span id="proxyTestResult" className="small"></span>
             </div>
-            <Check name="force_proxy" checked={c.force_proxy} labelKey="force_proxy" label="Force proxy" />
             {props.masking ? (
                 <>
                     <Check name="mask_streams" checked={c.mask_streams} labelKey="mask_streams" label="Hide real stream URLs" />

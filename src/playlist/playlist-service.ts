@@ -8,6 +8,7 @@ import { GENERATED_SCHEME, generatedPlaylistPath } from '../python/paths';
 import { sha256 } from '../security/crypto';
 import type { Channel, PlaylistData, UserConfig } from '../types';
 import { M3UParser, normalizeId, parseRemapping } from './m3u-parser';
+import { hasProxy, proxyFetchUrl, unwrapProxiedPlaylist } from '../addon/proxy';
 
 /**
  * Cache playlist condivisa: configurazioni con le stesse sorgenti (M3U + remapper + suffisso)
@@ -29,8 +30,10 @@ const MEMORY_TTL_MS = 30 * 60 * 1000;
 const memory = new Map<string, Entry>();
 const inflight = new Map<string, Promise<Entry>>();
 
-export function playlistKey(cfg: Pick<UserConfig, 'm3u' | 'remapper_path' | 'id_suffix'>): string {
-    return sha256(JSON.stringify([cfg.m3u.trim(), cfg.remapper_path.trim(), cfg.id_suffix.trim()])).slice(0, 24);
+/** Stesse sorgenti e stesso proxy = stessa cache (chi usa un proxy riceve sempre il download fatto dal suo). */
+export function playlistKey(cfg: Pick<UserConfig, 'm3u' | 'remapper_path' | 'id_suffix' | 'proxy' | 'proxy_pwd'>): string {
+    const via = hasProxy(cfg) ? cfg.proxy.trim().replace(/\/+$/, '') : '';
+    return sha256(JSON.stringify([cfg.m3u.trim(), cfg.remapper_path.trim(), cfg.id_suffix.trim(), via])).slice(0, 24);
 }
 
 export function parseInterval(value: string, fallbackMs: number): number {
@@ -54,20 +57,34 @@ function buildEntry(key: string, data: PlaylistData, updatedAt: number, lastErro
     return { key, data, updatedAt, lastError, lastUsed: Date.now(), byId, byName };
 }
 
+type Fetcher = (url: string) => Promise<string>;
+
+/**
+ * Con un proxy configurato anche playlist e remapping si scaricano dal proxy dell'utente:
+ * la sorgente vede l'IP del suo proxy. Senza proxy li scarica il server (via OUTBOUND_PROXY/WARP).
+ */
+function fetcherFor(cfg: UserConfig): Fetcher {
+    if (!hasProxy(cfg)) return url => fetchText(url);
+    return async url => {
+        const text = await fetchText(proxyFetchUrl(cfg, url));
+        return text.trimStart().startsWith('#EXTM3U') ? unwrapProxiedPlaylist(text, cfg.proxy) : text;
+    };
+}
+
 /** Legge una sorgente: URL http(s) oppure la playlist generata dallo script Python. */
-async function readSource(url: string): Promise<string> {
+async function readSource(url: string, fetch: Fetcher): Promise<string> {
     if (url.startsWith(GENERATED_SCHEME)) {
         const file = generatedPlaylistPath(url.slice(GENERATED_SCHEME.length));
         if (!fs.existsSync(file)) throw new Error('Generated playlist not found: run the Python script first');
         return fs.promises.readFile(file, 'utf8');
     }
-    return fetchText(url);
+    return fetch(url);
 }
 
-async function loadRemapping(remapperPath: string, logKey: string): Promise<Map<string, string>> {
+async function loadRemapping(remapperPath: string, fetch: Fetcher, logKey: string): Promise<Map<string, string>> {
     const fallback = path.join(env.rootDir, 'link.epg.remapping');
     try {
-        if (remapperPath && /^https?:\/\//.test(remapperPath)) return parseRemapping(await fetchText(remapperPath));
+        if (remapperPath && /^https?:\/\//.test(remapperPath)) return parseRemapping(await fetch(remapperPath));
     } catch (e) {
         logger.warn(logKey, 'Remapping download failed, using local file:', logger.errMsg(e));
     }
@@ -80,14 +97,15 @@ async function loadRemapping(remapperPath: string, logKey: string): Promise<Map<
 
 /** Scarica e parsa tutte le playlist. Un URL può essere un M3U oppure un file con una lista di URL. */
 export async function downloadPlaylist(cfg: UserConfig, logKey: string): Promise<PlaylistData> {
-    const remap = await loadRemapping(cfg.remapper_path, logKey);
+    const fetch = fetcherFor(cfg);
+    const remap = await loadRemapping(cfg.remapper_path, fetch, logKey);
     const parser = new M3UParser(remap, cfg.id_suffix);
     const sources = cfg.m3u.split(',').map(u => u.trim()).filter(Boolean);
     let loaded = 0;
     for (const source of sources) {
         let content: string;
         try {
-            content = await readSource(source);
+            content = await readSource(source, fetch);
         } catch (e) {
             logger.error(logKey, 'Playlist source error:', redact(source), logger.errMsg(e));
             continue;
@@ -100,7 +118,7 @@ export async function downloadPlaylist(cfg: UserConfig, logKey: string): Promise
         const nested = content.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'));
         for (const url of nested) {
             try {
-                parser.add(await fetchText(url));
+                parser.add(await fetch(url));
                 loaded++;
             } catch (e) {
                 logger.error(logKey, 'Playlist error:', redact(url), logger.errMsg(e));

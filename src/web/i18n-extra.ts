@@ -1,6 +1,15 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        proxy_recommended: "Recommended",
+        proxy_why_title: "Why use a proxy",
+        proxy_why_1: "With a proxy (MediaFlow Proxy or EasyProxy) everything goes through it: the playlist download and every stream. Sources only see the proxy's IP.",
+        proxy_why_2: "It also plays streams that need special headers, extractors (DaddyLive, Vavoo…) or ClearKey DRM keys.",
+        proxy_why_3: "Without a proxy, streams are opened directly by your device, from your IP.",
+        proxy_test_badpwd: "wrong password",
+        proxy_exit_ip: "exit IP",
+        summary_proxy_all: "playlist and streams via proxy",
+        summary_proxy_none: "none (direct streams from your IP)",
         step_source: "Playlist",
         step_epg: "TV guide",
         step_proxy: "Proxy",
@@ -123,6 +132,15 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        proxy_recommended: "Consigliato",
+        proxy_why_title: "Perché usare un proxy",
+        proxy_why_1: "Con un proxy (MediaFlow Proxy o EasyProxy) tutto passa da lì: il download della playlist e ogni stream. Le sorgenti vedono solo l'IP del proxy.",
+        proxy_why_2: "Riproduce anche gli stream che richiedono header particolari, estrattori (DaddyLive, Vavoo…) o chiavi DRM ClearKey.",
+        proxy_why_3: "Senza proxy gli stream vengono aperti direttamente dal tuo dispositivo, con il tuo IP.",
+        proxy_test_badpwd: "password errata",
+        proxy_exit_ip: "IP di uscita",
+        summary_proxy_all: "playlist e stream via proxy",
+        summary_proxy_none: "nessuno (stream diretti dal tuo IP)",
         step_source: "Playlist",
         step_epg: "Guida TV",
         step_proxy: "Proxy",
@@ -245,6 +263,10 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        proxy_recommended: "Recomendado",
+        proxy_why_title: "Por qué usar un proxy",
+        proxy_test_badpwd: "contraseña incorrecta",
+        proxy_exit_ip: "IP de salida",
         step_source: "Playlist",
         step_epg: "Guía TV",
         step_proxy: "Proxy",
@@ -323,6 +345,10 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        proxy_recommended: "Recommandé",
+        proxy_why_title: "Pourquoi utiliser un proxy",
+        proxy_test_badpwd: "mot de passe incorrect",
+        proxy_exit_ip: "IP de sortie",
         step_source: "Playlist",
         step_epg: "Guide TV",
         step_proxy: "Proxy",

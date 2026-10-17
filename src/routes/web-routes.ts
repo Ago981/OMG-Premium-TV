@@ -23,7 +23,8 @@ import {
     normalizeConfig, passwordVersion, setConfigPassword, updateConfig, type ConfigRecord
 } from '../store/config-store';
 import type { UserConfig } from '../types';
-import { detectProxy, proxyLabel } from '../addon/proxy';
+import { checkProxy, proxyLabel } from '../addon/proxy';
+import { lastEgress, outboundProxyLabel } from '../http-client';
 import { render } from '../web/jsx';
 import { AdminPage } from '../web/pages/Admin';
 import { AdminLoginPage, ConfigLoginPage, GatePage, HomePage } from '../web/pages/Auth';
@@ -153,7 +154,10 @@ webRouter.get('/admin', wrap(async (req, res) => {
             originProtected: !!env.originSecret,
             publicBaseUrl: env.publicBaseUrl,
             legacyUrls: env.allowLegacyUrls,
-            privateUrls: env.allowPrivateUrls
+            privateUrls: env.allowPrivateUrls,
+            outboundProxy: outboundProxyLabel(),
+            outboundRequired: env.outboundProxyRequired,
+            egress: lastEgress()
         }
     }));
 }));
@@ -207,13 +211,21 @@ api.post('/configs', wrap(async (req, res) => {
     }
 }));
 
-/** Verifica un proxy prima di salvarlo: tipo (MediaFlow/EasyProxy) e raggiungibilità. */
+/** Verifica un proxy prima di salvarlo: tipo (MediaFlow/EasyProxy), password e IP di uscita. */
 api.post('/proxy-test', wrap(async (req, res) => {
     if (limited(req, res, 'proxy-test')) return;
     const proxy = String(req.body?.proxy || '').trim();
     if (!/^https?:\/\//.test(proxy)) return fail(res, 400, 'invalid_url:proxy');
-    const info = await detectProxy(proxy, String(req.body?.proxy_pwd || ''), true);
-    res.json({ success: info.reachable, kind: info.kind, version: info.version || null, label: proxyLabel(info.kind) });
+    const check = await checkProxy(proxy, String(req.body?.proxy_pwd || ''));
+    res.json({
+        success: check.reachable && check.authOk,
+        reachable: check.reachable,
+        authOk: check.authOk,
+        kind: check.kind,
+        version: check.version || null,
+        label: proxyLabel(check.kind),
+        ip: check.ip
+    });
 }));
 
 api.post('/configs/:id/login', wrap(async (req, res) => {
@@ -246,7 +258,8 @@ api.put('/configs/:id', wrap(async (req, res) => {
         if (foreign) return fail(res, 400, 'invalid_url:m3u');
         const updated = await updateConfig(record.id, config, body.label !== undefined ? String(body.label).trim() : undefined) as ConfigRecord;
         applySchedules(updated);
-        const sourcesChanged = config.m3u !== record.config.m3u || config.remapper_path !== record.config.remapper_path || config.id_suffix !== record.config.id_suffix;
+        const sourcesChanged = (['m3u', 'remapper_path', 'id_suffix', 'proxy', 'proxy_pwd'] as const)
+            .some(k => config[k] !== record.config[k]);
         if (config.m3u) void getPlaylist(config, record.id, { force: sourcesChanged }).catch(() => undefined);
         res.json({ success: true });
     } catch (e) {

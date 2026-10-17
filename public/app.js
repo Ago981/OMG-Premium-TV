@@ -182,7 +182,7 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'mask_streams',
         'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 
@@ -322,7 +322,7 @@
                 [t('country'), p ? flag(p.iso) + ' ' + countryName(p.iso) : '—'],
                 ['M3U', d.m3u.split(',').filter(Boolean).length + ' URL'],
                 ['EPG', epgText],
-                ['Proxy', d.proxy ? (d.proxy_type === 'auto' ? t('proxy_type_auto') : d.proxy_type) : t('no')],
+                ['Proxy', d.proxy && d.proxy_pwd ? (d.proxy_type === 'auto' ? t('proxy_type_auto') : d.proxy_type) + ' — ' + t('summary_proxy_all') : t('summary_proxy_none')],
                 [t('mask_streams'), d.mask_streams ? t('yes') : t('no')],
                 [t('update_interval'), d.update_interval || '12:00']
             ];
@@ -368,17 +368,17 @@
                 out.className = 'small muted';
                 api('POST', '/api/proxy-test', { proxy: form.proxy.value.trim(), proxy_pwd: form.proxy_pwd.value }).then(function (d) {
                     if (d.success) {
-                        out.textContent = '✅ ' + d.label + (d.version ? ' ' + d.version : '') + ' — ' + t('proxy_test_ok');
+                        out.textContent = '✅ ' + d.label + (d.version ? ' ' + d.version : '') + ' — ' + t('proxy_test_ok') +
+                            (d.ip ? ' · ' + t('proxy_exit_ip') + ' ' + d.ip : '');
                         out.className = 'small ok-text';
+                    } else if (d.reachable && !d.authOk) {
+                        out.textContent = '❌ ' + d.label + ': ' + t('proxy_test_badpwd');
+                        out.className = 'small error-text';
                     } else {
                         out.textContent = '❌ ' + (d.message ? errorText(d.message) : t('proxy_test_fail'));
                         out.className = 'small error-text';
                     }
                 });
-            },
-            'copy-manifest': function () {
-                var url = $('#manifestUrl').textContent.trim();
-                navigator.clipboard.writeText(url).then(function () { toast(t('toast_copied')); });
             },
             install: function () {
                 var url = $('#manifestUrl').textContent.trim();

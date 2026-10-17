@@ -58,6 +58,73 @@ export async function detectProxy(proxyUrl: string, password: string, fresh = fa
     return info;
 }
 
+export interface ProxyCheck extends ProxyInfo {
+    /** false se il proxy rifiuta la password (401/403). */
+    authOk: boolean;
+    /** IP pubblico con cui il proxy esce verso le sorgenti, se lo comunica. */
+    ip: string | null;
+}
+
+/** Verifica completa per il pulsante "Verifica proxy": tipo, raggiungibilità, password e IP di uscita. */
+export async function checkProxy(proxyUrl: string, password: string): Promise<ProxyCheck> {
+    const info = await detectProxy(proxyUrl, password, true);
+    const result: ProxyCheck = { ...info, authOk: false, ip: null };
+    if (!info.reachable) return result;
+    try {
+        const res = await request(`${proxyUrl.replace(/\/+$/, '')}/proxy/ip?api_password=${encodeURIComponent(password)}`, { timeoutMs: 15000 });
+        result.authOk = res.status !== 401 && res.status !== 403;
+        if (res.ok && (res.headers.get('content-type') || '').includes('json')) {
+            const data = await res.json() as { ip?: string };
+            result.ip = typeof data.ip === 'string' ? data.ip : null;
+        } else {
+            await res.body?.cancel();
+        }
+    } catch (e) {
+        logger.warn('_', 'Proxy check failed:', logger.errMsg(e));
+    }
+    return result;
+}
+
+/** Proxy configurato e completo (URL + password): da qui in poi tutto passa dal proxy. */
+export function hasProxy(cfg: Pick<UserConfig, 'proxy' | 'proxy_pwd'>): boolean {
+    return !!(cfg.proxy && cfg.proxy_pwd);
+}
+
+/**
+ * URL per scaricare un file qualsiasi (playlist, remapping) attraverso il proxy dell'utente:
+ * la sorgente vede l'IP del proxy, non quello del server.
+ */
+export function proxyFetchUrl(cfg: Pick<UserConfig, 'proxy' | 'proxy_pwd'>, url: string): string {
+    const params = new URLSearchParams({ d: url, api_password: cfg.proxy_pwd });
+    return `${cfg.proxy.replace(/\/+$/, '')}/proxy/stream?${params}`;
+}
+
+/**
+ * EasyProxy riscrive ogni contenuto che inizia con #EXTM3U, sostituendo gli URL dei canali con
+ * URL del proxy (…/proxy/hls/manifest.m3u8?d=<originale>&api_password=…). Qui si ripristina
+ * l'originale dal parametro d/url, così la playlist resta identica alla sorgente.
+ * Su MediaFlow (che non riscrive) non cambia nulla.
+ */
+export function unwrapProxiedPlaylist(content: string, proxyUrl: string): string {
+    const base = proxyUrl.replace(/\/+$/, '');
+    let origin: string;
+    try {
+        origin = new URL(base).origin;
+    } catch {
+        return content;
+    }
+    return content.split('\n').map(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#') || !trimmed.startsWith(origin)) return line;
+        try {
+            const u = new URL(trimmed);
+            return u.searchParams.get('d') || u.searchParams.get('url') || line;
+        } catch {
+            return line;
+        }
+    }).join('\n');
+}
+
 export async function resolveProxyKind(cfg: Pick<UserConfig, 'proxy' | 'proxy_pwd' | 'proxy_type'>): Promise<ProxyKind> {
     if (cfg.proxy_type === 'mediaflow' || cfg.proxy_type === 'easyproxy') return cfg.proxy_type;
     return (await detectProxy(cfg.proxy, cfg.proxy_pwd)).kind;

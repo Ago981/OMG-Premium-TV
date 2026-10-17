@@ -31,7 +31,6 @@ export const DEFAULT_CONFIG: UserConfig = {
     language: 'Italiano',
     proxy: '',
     proxy_pwd: '',
-    force_proxy: false,
     id_suffix: '',
     remapper_path: '',
     update_interval: '12:00',
@@ -45,7 +44,7 @@ export const DEFAULT_CONFIG: UserConfig = {
     country: ''
 };
 
-const BOOL_KEYS = ['epg_enabled', 'force_proxy', 'resolver_enabled', 'mask_streams'] as const;
+const BOOL_KEYS = ['epg_enabled', 'resolver_enabled', 'mask_streams'] as const;
 const INTERVAL_RE = /^\d{1,2}:\d{2}$/;
 
 function toBool(v: unknown): boolean {

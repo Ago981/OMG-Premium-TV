@@ -1,6 +1,7 @@
-import { h } from '../jsx';
+import { h, Fragment } from '../jsx';
 import { hostOf } from '../../http-client';
 import type { EpgSource } from '../../epg/epg-service';
+import type { EgressStatus } from '../../http-client';
 import type { PlaylistInfo } from '../../playlist/playlist-service';
 import type { ConfigRecord } from '../../store/config-store';
 import { Layout } from './Layout';
@@ -26,6 +27,9 @@ export interface AdminProps {
         publicBaseUrl: string;
         legacyUrls: boolean;
         privateUrls: boolean;
+        outboundProxy: string;
+        outboundRequired: boolean;
+        egress: EgressStatus | null;
     };
 }
 
@@ -213,6 +217,21 @@ function SettingsCard(props: { s: AdminProps['settings'] }) {
             <h4 data-i18n="admin_server_title">Server and privacy</h4>
             <table className="table compact">
                 <tbody>
+                    <tr>
+                        <td>OUTBOUND_PROXY</td>
+                        <td>
+                            {s.outboundProxy || <span className="badge warn">direct</span>}
+                            {s.outboundRequired ? <span className="badge ok">required</span> : null}
+                            {s.egress ? (
+                                <div className="small">
+                                    {s.egress.ok
+                                        ? <>{s.egress.warp ? <span className="badge ok">WARP on</span> : <span className="badge warn">WARP off</span>} IP {s.egress.ip}{s.egress.colo ? ` (${s.egress.colo})` : ''}</>
+                                        : <span className="badge err">{s.egress.error}</span>}
+                                    {' · '}{date(s.egress.checkedAt)}
+                                </div>
+                            ) : null}
+                        </td>
+                    </tr>
                     <tr><td>PUBLIC_BASE_URL</td><td>{s.publicBaseUrl || <span className="badge warn">not set</span>}</td></tr>
                     <tr><td>ORIGIN_SECRET (Cloudflare)</td><td>{s.originProtected ? <span className="badge ok">on</span> : <span className="badge warn">off</span>}</td></tr>
                     <tr><td>STREAM_MASKING</td><td>{s.streamMasking ? <span className="badge ok">on</span> : <span className="badge warn">off</span>}</td></tr>

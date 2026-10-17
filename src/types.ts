@@ -6,7 +6,6 @@ export interface UserConfig {
     language: string;
     proxy: string;
     proxy_pwd: string;
-    force_proxy: boolean;
     id_suffix: string;
     remapper_path: string;
     update_interval: string;

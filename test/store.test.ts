@@ -28,10 +28,12 @@ describe('database', { skip: url ? false : 'TEST_DATABASE_URL not set' }, () => 
     });
 
     test('normalizeConfig converts legacy string booleans and validates URLs', () => {
-        const c = normalizeConfig({ m3u: ' https://a/x.m3u ', epg_enabled: 'true', force_proxy: 'false', unknown: 'x' });
+        const c = normalizeConfig({ m3u: ' https://a/x.m3u ', epg_enabled: 'true', mask_streams: 'false', force_proxy: 'true', unknown: 'x' });
         assert.equal(c.m3u, 'https://a/x.m3u');
         assert.equal(c.epg_enabled, true);
-        assert.equal(c.force_proxy, false);
+        assert.equal(c.mask_streams, false);
+        // opzione rimossa: i vecchi valori vengono ignorati
+        assert.equal((c as unknown as Record<string, unknown>).force_proxy, undefined);
         assert.equal((c as unknown as Record<string, unknown>).unknown, undefined);
         assert.throws(() => normalizeConfig({ m3u: 'javascript:alert(1)' }, { strict: true }), ConfigValidationError);
         assert.throws(() => normalizeConfig({ m3u: 'https://a', update_interval: '12h' }, { strict: true }), ConfigValidationError);
