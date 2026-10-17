@@ -1,10 +1,11 @@
-# OMG Premium TV — addon + PostgreSQL + Cloudflare WARP + Cloudflare Tunnel
+# OMG Premium TV — addon + PostgreSQL + Cloudflare WARP (+ Cloudflare Tunnel facoltativo)
 #
-# 1. Copia .env.example in .env e compila le variabili
-# 2. docker compose up -d
+# Avvio immediato, senza configurare nulla:   docker compose up -d
+#   → addon su http://<server>:10000, database PostgreSQL già pronto, uscita da WARP.
+# Personalizzazioni (facoltative): copia .env.example in .env e modifica i valori.
 #
-# - In entrata: con il Tunnel l'addon NON espone porte su Internet, gli utenti vedono solo Cloudflare.
-#   Senza tunnel, decommenta "ports" nel servizio addon.
+# - In entrata, con Cloudflare Tunnel: metti CLOUDFLARE_TUNNEL_TOKEN e ADDON_BIND=127.0.0.1 nel .env
+#   e avvia con   docker compose --profile tunnel up -d   (la porta 10000 non è più raggiungibile da fuori).
 # - In uscita: tutto ciò che scarica il server (playlist senza proxy, EPG, verifiche, richieste ai
 #   proxy degli utenti) passa da WARP. Se WARP non funziona i download falliscono: il server non esce
 #   mai con il tuo IP (OUTBOUND_PROXY_REQUIRED=true).
@@ -14,9 +15,12 @@ services:
     build: .
     image: omg-premium-tv:latest
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgres://omg:${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD in .env}@db:5432/omg
+      # Database incluso nello stack (servizio "db"), raggiungibile solo dalla rete interna di Docker
+      DATABASE_URL: postgres://omg:${POSTGRES_PASSWORD:-omg-premium-tv}@db:5432/omg
       DATA_DIR: /app/data
       # Script Python (generatore playlist e resolver) disattivati: eseguono codice scaricato da URL
       # sul server. Per attivarli metti PYTHON_ENABLED=true nel file .env
@@ -31,16 +35,18 @@ services:
         condition: service_healthy
       warp:
         condition: service_started
-    # ports:
-    #   - "10000:10000"
+    ports:
+      # ADDON_BIND=127.0.0.1 nel .env per renderlo raggiungibile solo dal tunnel / reverse proxy locale
+      - "${ADDON_BIND:-0.0.0.0}:${ADDON_PORT:-10000}:10000"
 
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: omg
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omg-premium-tv}
       POSTGRES_DB: omg
+    # Nessuna porta pubblicata: il database è visibile solo agli altri container dello stack
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -71,14 +77,15 @@ services:
   #   depends_on:
   #     - warp
 
-  # Cloudflare Tunnel: nel pannello Zero Trust crea un tunnel, imposta come servizio
-  # http://addon:10000 sul tuo hostname pubblico e copia qui il token.
+  # Cloudflare Tunnel (facoltativo, profilo "tunnel"): nel pannello Zero Trust crea un tunnel,
+  # imposta come servizio http://addon:10000 sul tuo hostname pubblico e metti il token nel .env.
   cloudflared:
     image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?imposta CLOUDFLARE_TUNNEL_TOKEN in .env}
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
     depends_on:
       - addon
 
