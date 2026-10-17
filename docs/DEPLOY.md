@@ -127,8 +127,10 @@ dispositivo dell'utente; con un proxy, inoltre, i segmenti del video sono servit
 
 Il proxy è **consigliato, non obbligatorio**. Quando l'utente ne configura uno, **tutto passa dal proxy**:
 
-- ogni stream: nel catalogo compaiono solo i link via proxy. Se il proxy non riesce ad aprire uno stream
-  viene offerto il link diretto, segnalato con ⚠️ (parte dall'IP dell'utente)
+- ogni stream: nel catalogo compaiono solo i link via proxy.
+- **Solo proxy** (`force_proxy`, attivo di default con un proxy): esclude rigorosamente qualsiasi fallback diretto,
+  garantendo che nulla esca dall'IP dell'utente. Se disattivato, per gli stream che il proxy non riesce ad aprire
+  viene offerto il link diretto di riserva, segnalato con ⚠️ (che parte dall'IP dell'utente).
 
 Il download della playlist e del file di remapping viene invece effettuato sempre direttamente dal server
 (tramite OUTBOUND_PROXY/WARP se attivo), per garantire massima affidabilità e prevenire errori 502/blocchi WAF

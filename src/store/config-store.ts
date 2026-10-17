@@ -40,11 +40,13 @@ export const DEFAULT_CONFIG: UserConfig = {
     resolver_enabled: false,
     resolver_update_interval: '',
     mask_streams: true,
+    force_proxy: true,
+    aio_compatible: false,
     proxy_type: 'auto',
     country: ''
 };
 
-const BOOL_KEYS = ['epg_enabled', 'resolver_enabled', 'mask_streams'] as const;
+const BOOL_KEYS = ['epg_enabled', 'resolver_enabled', 'mask_streams', 'force_proxy', 'aio_compatible'] as const;
 const INTERVAL_RE = /^\d{1,2}:\d{2}$/;
 
 function toBool(v: unknown): boolean {

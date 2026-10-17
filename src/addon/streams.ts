@@ -2,6 +2,7 @@ import { appConfig } from '../config';
 import { env } from '../env';
 import { request } from '../http-client';
 import * as logger from '../logger';
+import { countryLangAbbr } from '../presets';
 import { encrypt } from '../security/crypto';
 import type { Channel, StreamHeaders, StremioStream, UserConfig } from '../types';
 import type { PythonResolver } from '../python/python-resolver';
@@ -24,8 +25,10 @@ export interface StreamContext {
     resolver: PythonResolver;
 }
 
-function langAbbr(cfg: UserConfig): string {
-    return (cfg.language || appConfig.defaultLanguage).substring(0, 3).toUpperCase();
+function aioSuffix(cfg: UserConfig): string {
+    if (!cfg.aio_compatible) return '';
+    const abbr = countryLangAbbr(cfg.country, cfg.language || appConfig.defaultLanguage);
+    return ` [${abbr}]`;
 }
 
 function pick(headers: StreamHeaders, ...names: string[]): string | undefined {
@@ -98,7 +101,7 @@ interface StreamInput {
 function directStream(input: StreamInput, cfg: UserConfig, icon = '📺', suffix = ''): StremioStream {
     return {
         name: input.name,
-        title: `${icon} ${input.originalName || input.name} [${langAbbr(cfg)}]${suffix}`.trimStart(),
+        title: `${icon} ${input.originalName || input.name}${aioSuffix(cfg)}${suffix}`.trimStart(),
         url: input.url,
         headers: input.headers,
         language: cfg.language,
@@ -110,7 +113,7 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
     const cfg = ctx.config;
     if (cfg.proxy && input.url.includes(cfg.proxy)) return [];
     if (EXCLUDED_DOMAINS.some(d => input.url.includes(d))) {
-        return [{ ...directStream(input, cfg, ''), title: `${input.originalName} [${langAbbr(cfg)}]` }];
+        return [{ ...directStream(input, cfg, ''), title: `${input.originalName}${aioSuffix(cfg)}` }];
     }
     if (!cfg.proxy || !cfg.proxy_pwd) return [];
 
@@ -120,14 +123,17 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
         const type = input.clearkey ? 'DASH ClearKey' : streamType(input.url);
         return [{
             name: input.name,
-            title: `🌐 ${input.originalName} [${langAbbr(cfg)}]\n[${proxyLabel(kind)} ${type}]`,
+            title: `🌐 ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ${type}]`,
             url: proxyUrl,
             language: cfg.language,
             behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
         }];
     }
-    // Il proxy non riesce ad aprire questo stream: si offre il link diretto (dall'IP dell'utente), segnalato
-    return [{ ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName} [${langAbbr(cfg)}]\n[${proxyLabel(kind)} ✗ → direct]` }];
+    // Con force_proxy (predefinito se c'è un proxy), non si offrono stream diretti per evitare di esporre l'IP dell'utente
+    if (cfg.force_proxy) return [];
+
+    // Se force_proxy è disattivato: si offre il link diretto di riserva (dall'IP dell'utente), segnalato con ⚠️
+    return [{ ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ✗ → direct]` }];
 }
 
 /** Con un proxy configurato tutto passa dal proxy; senza, gli stream sono diretti (IP dell'utente). */

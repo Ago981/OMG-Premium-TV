@@ -141,6 +141,8 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
                 <button type="button" className="secondary" data-action="proxy-test" data-i18n="proxy_test">Test proxy</button>
                 <span id="proxyTestResult" className="small"></span>
             </div>
+            <Check name="force_proxy" checked={c.force_proxy} labelKey="force_proxy" label="Solo proxy" />
+            <small className="hint" data-i18n="force_proxy_hint">Mostra solo i flussi che passano dal proxy. Esclude i fallback diretti se il proxy fallisce.</small>
             {props.masking ? (
                 <>
                     <Check name="mask_streams" checked={c.mask_streams} labelKey="mask_streams" label="Hide real stream URLs" />
@@ -217,6 +219,8 @@ function AdvancedStep(props: { c: UserConfig; mode: 'new' | 'edit'; pythonAllowe
     const c = props.c;
     return (
         <Step index={3}>
+            <Check name="aio_compatible" checked={c.aio_compatible} labelKey="aio_compatible" label="Modalità compatibile con AIOStreams" />
+            <small className="hint" data-i18n="aio_compatible_hint">Aggiunge il suffisso del paese [es. ITA] al nome di canali e flussi per il corretto rilevamento su AIOStreams.</small>
             <Field labelKey="channel_language" label="Channel language:" hintKey="channel_language_hint" hint="Only used for compatibility with AIOStreams.">
                 <select name="language">
                     {LANGUAGES.map(l => <option value={l} selected={(c.language || 'Italiano') === l}>{l}</option>)}

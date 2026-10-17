@@ -2,7 +2,7 @@ import { appConfig, NO_SIGNAL_URL, SETTINGS_GENRE, SETTINGS_LOGO } from '../conf
 import { ensureSources, enqueue, getGuides, type ChannelGuide } from '../epg/epg-service';
 import * as logger from '../logger';
 import { getPlaylist, type PlaylistHandle } from '../playlist/playlist-service';
-import { countryPreset } from '../presets';
+import { countryLangAbbr, countryPreset } from '../presets';
 import { getRuntime } from '../runtime';
 import type { ConfigRecord } from '../store/config-store';
 import type { Channel, StremioStream, UserConfig } from '../types';
@@ -34,8 +34,10 @@ function t(key: string, cfg: UserConfig): string {
     return I18N[langCode(cfg)]?.[key] || I18N.en[key] || key;
 }
 
-function langAbbr(cfg: UserConfig): string {
-    return (cfg.language || appConfig.defaultLanguage).substring(0, 3).toUpperCase();
+function aioSuffix(cfg: UserConfig): string {
+    if (!cfg.aio_compatible) return '';
+    const abbr = countryLangAbbr(cfg.country, cfg.language || appConfig.defaultLanguage);
+    return ` [${abbr}]`;
 }
 
 function cleanNameForImage(name: string): string {
@@ -158,7 +160,7 @@ function baseMeta(ch: Channel, cfg: UserConfig) {
     return {
         id: ch.id,
         type: 'tv',
-        name: ch.streamInfo?.tvg?.chno ? `${ch.streamInfo.tvg.chno}. ${ch.name} [${langAbbr(cfg)}]` : `${ch.name} [${langAbbr(cfg)}]`,
+        name: ch.streamInfo?.tvg?.chno ? `${ch.streamInfo.tvg.chno}. ${ch.name}${aioSuffix(cfg)}` : `${ch.name}${aioSuffix(cfg)}`,
         poster: ch.poster || logo,
         background: ch.background || logo,
         logo: ch.logo || logo,
@@ -201,7 +203,7 @@ function settingsMetas(cfg: UserConfig) {
     ].map(ch => ({
         id: ch.id,
         type: 'tv',
-        name: `${ch.name} [${langAbbr(cfg)}]`,
+        name: `${ch.name}${aioSuffix(cfg)}`,
         poster: SETTINGS_LOGO,
         background: SETTINGS_LOGO,
         logo: SETTINGS_LOGO,

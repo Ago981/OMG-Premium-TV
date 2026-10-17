@@ -182,8 +182,8 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'mask_streams',
-        'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
+    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+        'aio_compatible', 'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 
     /** Legge tutti i campi della configurazione (anche quelli fuori dal form con form="configForm"). */
@@ -271,6 +271,14 @@
         fillEpgSelect();
         countrySel.addEventListener('change', syncEpgPreset);
         document.addEventListener('omg:language', function () { fillCountrySelect(); fillEpgSelect(); });
+
+        if (form.proxy && form.force_proxy) {
+            form.proxy.addEventListener('input', function () {
+                if (form.proxy.value.trim() && mode === 'new') {
+                    form.force_proxy.checked = true;
+                }
+            });
+        }
 
         // ---- wizard
         var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
