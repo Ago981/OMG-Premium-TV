@@ -24,7 +24,18 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ## 🔄 Changelog di OMG Premium TV
 
-### 🚀 Versione 8.0.0 (Attuale)
+### 🚀 Versione 8.1.0 (Attuale)
+
+Miglioramenti a prestazioni, privacy dei proxy e compatibilità cataloghi:
+- **⚡ Risoluzione stream ultrarapida**: health check dei flussi tramite proxy ridotto a singolo tentativo con timeout a 3 secondi ed eseguito in parallelo (`Promise.all`). Tempi di risposta scesi da oltre 40s a ~1-3s.
+- **🛡️ Nuova opzione «Solo proxy»**: attiva di default quando si configura un proxy. Esclude totalmente qualsiasi fallback diretto che esporrebbe l'IP dell'utente qualora il proxy fallisca l'apertura del flusso.
+- **🏷️ Cataloghi dinamici multi-configurazione**: il catalogo base è stato rinominato in `OMG+`. Se inserisci un nome per la configurazione (es. "Sport" o "Salotto"), il catalogo in Stremio diventa automaticamente `OMG+ · Sport`, permettendo di installare più configurazioni contemporaneamente senza conflitti o sovrapposizioni.
+- **🌐 Modalità «AIOStreams compatibile»**: il suffisso del paese (es. `[ITA]`, `[FRA]`, `[ESP]`) non è più forzato su ogni canale; viene aggiunto solo attivando l'apposita modalità nel tab Avanzate, calcolato in automatico dal paese selezionato nel wizard.
+- **📥 Download playlist diretto e affidabile**: le playlist M3U e i file di remapping vengono sempre scaricati direttamente dal server (o via WARP/outbound proxy), azzerando gli errori 502/WAF causati dai proxy HTTP esterni su file di grandi dimensioni.
+
+> ℹ️ *Nota sulla versione precedente*: la versione **7.0.0** (Node.js monolitica classica) rimane pienamente disponibile e consultabile sul branch dedicato [`7.0.0`](https://github.com/mccoy88f/OMG-Premium-TV/tree/7.0.0).
+
+### 🚀 Versione 8.0.0
 
 Riscrittura completa in **TypeScript/TSX** con architettura multi-utente. Guida completa: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
