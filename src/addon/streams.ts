@@ -42,16 +42,14 @@ async function proxyHealthy(proxyUrl: string, headers: StreamHeaders, logKey: st
     const origin = pick(headers, 'origin', 'Origin');
     if (origin) h.Origin = origin;
     let ok = false;
-    for (let attempt = 0; attempt < 3 && !ok; attempt++) {
-        try {
-            const res = await request(proxyUrl, { headers: h, timeoutMs: 10000 });
-            await res.body?.cancel();
-            ok = res.status < 400;
-        } catch {
-            if (attempt < 2) await new Promise(r => setTimeout(r, 500));
-        }
+    try {
+        const res = await request(proxyUrl, { headers: h, timeoutMs: 3000 });
+        await res.body?.cancel();
+        ok = res.status < 400;
+    } catch {
+        ok = false;
     }
-    if (!ok) logger.warn(logKey, 'Proxy health check failed');
+    if (!ok) logger.warn(logKey, 'Proxy health check failed for stream:', proxyUrl.split('?')[0]);
     health.set(proxyUrl, { at: Date.now(), ok });
     if (health.size > 5000) health.clear();
     return ok;
@@ -116,15 +114,8 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
     }
     if (!cfg.proxy || !cfg.proxy_pwd) return [];
 
-    let proxyUrl = buildProxyUrl(kind, input.url, input.headers, cfg, input.clearkey) as string;
-    let ok = await proxyHealthy(proxyUrl, input.headers, ctx.configId);
-    if (!ok && !input.url.endsWith('/') && !input.clearkey) {
-        const withSlash = buildProxyUrl(kind, input.url + '/', input.headers, cfg) as string;
-        if (await proxyHealthy(withSlash, input.headers, ctx.configId)) {
-            proxyUrl = withSlash;
-            ok = true;
-        }
-    }
+    const proxyUrl = buildProxyUrl(kind, input.url, input.headers, cfg, input.clearkey) as string;
+    const ok = await proxyHealthy(proxyUrl, input.headers, ctx.configId);
     if (ok) {
         const type = input.clearkey ? 'DASH ClearKey' : streamType(input.url);
         return [{
@@ -141,12 +132,9 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
 
 /** Con un proxy configurato tutto passa dal proxy; senza, gli stream sono diretti (IP dell'utente). */
 async function originalStreams(inputs: StreamInput[], ctx: StreamContext, kind: ProxyKind | null): Promise<StremioStream[]> {
-    const out: StremioStream[] = [];
-    for (const input of inputs) {
-        if (kind) out.push(...await proxyStreams(input, ctx, kind));
-        else out.push(directStream(input, ctx.config));
-    }
-    return out;
+    if (!kind) return inputs.map(input => directStream(input, ctx.config));
+    const results = await Promise.all(inputs.map(input => proxyStreams(input, ctx, kind)));
+    return results.flat();
 }
 
 async function resolvedStreams(channel: Channel, ctx: StreamContext): Promise<StremioStream[]> {
