@@ -96,8 +96,8 @@ function EpgStep(props: { c: UserConfig }) {
     return (
         <Step index={1}>
             <Check name="epg_enabled" checked={props.c.epg_enabled} labelKey="enable_epg" label="Enable EPG" />
-            <Check name="smart_epg" checked={props.c.smart_epg !== false} labelKey="smart_epg" label="Abbinamento EPG intelligente" />
-            <small className="hint" data-i18n="smart_epg_hint">Abbina l'EPG in modo permissivo (ignora tag HD/SD/4K, numeri canale e fallback su nome). Consigliato lasciarlo attivo a meno che la playlist non abbia già ID EPG perfettamente dedicati.</small>
+            <Check name="smart_epg" checked={props.c.smart_epg !== false} labelKey="smart_epg" label="Smart EPG matching" />
+            <small className="hint" data-i18n="smart_epg_hint">Matches EPG permissively (ignores HD/SD/4K quality tags, channel numbers, and matches on name). Recommended to leave enabled unless your playlist already has strictly dedicated EPG IDs.</small>
             <Field labelKey="epg_url" label="EPG URL:" hintKey="epg_hint" hint="You can enter multiple EPG URLs separated by a comma (,)">
                 <input type="text" name="epg" value={props.c.epg} data-i18n-placeholder="epg_placeholder" placeholder="https://example.com/epg1.xml,https://example.com/epg2.xml" />
             </Field>
@@ -143,8 +143,8 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
                 <button type="button" className="secondary" data-action="proxy-test" data-i18n="proxy_test">Test proxy</button>
                 <span id="proxyTestResult" className="small"></span>
             </div>
-            <Check name="force_proxy" checked={c.force_proxy} labelKey="force_proxy" label="Solo proxy" />
-            <small className="hint" data-i18n="force_proxy_hint">Mostra solo i flussi che passano dal proxy. Esclude i fallback diretti se il proxy fallisce.</small>
+            <Check name="force_proxy" checked={c.force_proxy} labelKey="force_proxy" label="Proxy only" />
+            <small className="hint" data-i18n="force_proxy_hint">Show only streams through the proxy. Exclude direct fallback streams if proxy fails.</small>
             {props.masking ? (
                 <>
                     <Check name="mask_streams" checked={c.mask_streams} labelKey="mask_streams" label="Hide real stream URLs" />
@@ -221,8 +221,8 @@ function AdvancedStep(props: { c: UserConfig; mode: 'new' | 'edit'; pythonAllowe
     const c = props.c;
     return (
         <Step index={3}>
-            <Check name="aio_compatible" checked={c.aio_compatible} labelKey="aio_compatible" label="Modalità compatibile con AIOStreams" />
-            <small className="hint" data-i18n="aio_compatible_hint">Aggiunge il suffisso del paese [es. ITA] al nome di canali e flussi per il corretto rilevamento su AIOStreams.</small>
+            <Check name="aio_compatible" checked={c.aio_compatible} labelKey="aio_compatible" label="AIOStreams compatible mode" />
+            <small className="hint" data-i18n="aio_compatible_hint">Appends country code [e.g. ITA] to channel and stream names for AIOStreams detection.</small>
             <Field labelKey="channel_language" label="Channel language:" hintKey="channel_language_hint" hint="Only used for compatibility with AIOStreams.">
                 <select name="language">
                     {LANGUAGES.map(l => <option value={l} selected={(c.language || 'Italiano') === l}>{l}</option>)}
