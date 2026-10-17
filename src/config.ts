@@ -60,7 +60,7 @@ function loadConfig(): AppConfig {
                 description: custom.addonDescription || base.manifest.description,
                 logo: custom.addonLogo || base.manifest.logo,
                 catalogId: 'omg_plus_tv',
-                catalogName: 'OMG+ TV'
+                catalogName: 'OMG+'
             }
         };
     } catch (e) {

@@ -118,7 +118,7 @@ export async function manifestHandler(ctx: AddonContext): Promise<Record<string,
         catalogs: [{
             type: 'tv',
             id: m.catalogId,
-            name: m.catalogName,
+            name: record.label && !record.legacy ? `${m.catalogName} · ${record.label}` : m.catalogName,
             extra: [
                 { name: 'genre', isRequired: false, options: [...new Set([...genres, SETTINGS_GENRE])] },
                 { name: 'search', isRequired: false },
