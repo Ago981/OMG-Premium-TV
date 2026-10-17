@@ -388,6 +388,34 @@
                     }
                 });
             },
+            'copy-manifest': function () {
+                var url = $('#manifestUrl').textContent.trim();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function () {
+                        toast(t('toast_copied'));
+                    }).catch(function () {
+                        copyFallback(url);
+                    });
+                } else {
+                    copyFallback(url);
+                }
+                function copyFallback(text) {
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+                    try {
+                        document.execCommand('copy');
+                        toast(t('toast_copied'));
+                    } catch (e) {
+                        prompt(t('copy_manifest'), text);
+                    }
+                    document.body.removeChild(ta);
+                }
+            },
             install: function () {
                 var url = $('#manifestUrl').textContent.trim();
                 location.href = url.replace(/^https?:\/\//, 'stremio://');
