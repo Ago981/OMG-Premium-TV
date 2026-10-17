@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import { createApp } from './app';
 import { closeDatabase, initDatabase } from './db';
 import { env } from './env';
@@ -20,7 +19,7 @@ function every(ms: number, task: () => Promise<unknown> | void, name: string): v
 async function main(): Promise<void> {
     fs.mkdirSync(env.dataDir, { recursive: true });
     const database = await initDatabase();
-    logger.log('_', `Database: ${database.kind}${database.kind === 'sqlite' ? ` (${path.join(env.dataDir, 'omg.db')})` : ''}`);
+    logger.log('_', `Database: ${database.kind}`);
     await initAppSecret();
     await initAdminPassword();
     await epg.resetInterrupted();

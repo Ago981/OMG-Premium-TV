@@ -1,6 +1,9 @@
 # 🐳 Installazione di OMG Premium TV tramite Docker
 ***[🇮🇹 Leggi in italiano](README.md)*** - ***[🇬🇧 Read in English](docker-install-en.md)*** - ***[🇫🇷 Lire en Français](docker-install-fr.md)*** - ***[🇪🇸 Leer en español](docker-install-es.md)***
 
+> ℹ️ **Versione 8**: serve un database **PostgreSQL**. Il modo più semplice è `docker compose up -d` con il file
+> [docker-compose.yml](docker-compose.yml) (addon + PostgreSQL + Cloudflare Tunnel). Guida completa: [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## 🖥️ Perché usare Docker?
 
 Installare OMG Premium TV tramite Docker offre diversi vantaggi:
@@ -29,7 +32,8 @@ Installare OMG Premium TV tramite Docker offre diversi vantaggi:
    - Assegna un nome allo stack (es. `omg-premium-tv`)
 
 3. **Configura lo Stack** ⚙️
-   - Nella sezione "Web editor", incolla il seguente file [docker-compose.portainer](docker-compose.portainer) presente nella repository.
+   - Nella sezione "Web editor", incolla il seguente file [docker-compose.portainer](docker-compose.portainer) presente nella repository (addon + PostgreSQL).
+   - In **Environment variables** aggiungi `POSTGRES_PASSWORD`, `ADMIN_PASSWORD` e `PUBLIC_BASE_URL`.
 
 4. **Avvia lo Stack** ▶️
    - Clicca sul pulsante **Deploy the stack**
@@ -37,7 +41,7 @@ Installare OMG Premium TV tramite Docker offre diversi vantaggi:
 
 5. **Accedi all'Addon** 🌐
    - Una volta avviato, accedi all'interfaccia web di OMG Premium TV all'indirizzo:
-   - `http://tuo-server:7860`
+   - `http://tuo-server:10000` (pannello admin: `http://tuo-server:10000/admin`)
 
 ## 🤗 Opzione 2: Installazione su Hugging Face Spaces
 
@@ -62,6 +66,7 @@ Installare OMG Premium TV tramite Docker offre diversi vantaggi:
 3. **Configura il Dockerfile** 📝
    - Crea un nuovo file chiamato `Dockerfile`
    - Incolla il contenuto del file [Dockerfile.hf](Dockerfile.hf) presente nella repository.
+   - In **Settings → Variables and secrets** aggiungi i secret `DATABASE_URL` (PostgreSQL esterno, es. Neon o Supabase gratuiti, con `?sslmode=require`), `ADMIN_PASSWORD` e `PUBLIC_BASE_URL`.
 
 4. **Commit e Avvia il Deployment** 📤
    - Clicca su **Commit changes to main**
@@ -78,10 +83,11 @@ Dopo aver installato l'addon tramite Docker, segui questi passaggi per configura
 1. **Accedi all'interfaccia web** 🌐
    - Apri il browser e vai all'URL del tuo addon (VPS o Hugging Face)
 
-2. **Configura la tua playlist M3U** 📋
-   - Segui le istruzioni nella sezione "Configurazione di base" di questo manuale
+2. **Crea la configurazione** 📋
+   - Clicca su **Crea configurazione** e segui i passaggi (playlist, guida TV, proxy, avanzate, password)
 
-3. **Genera e copia l'URL del manifest** 📝
+3. **Copia l'URL del manifest** 📝
+   - L'URL ha la forma `https://tuo-server/c/<ID>/manifest.json`
    - Clicca su **COPIA URL MANIFEST**
    - Oppure clicca su **INSTALLA SU STREMIO** se stai usando lo stesso dispositivo
 
@@ -130,7 +136,8 @@ Per visualizzare i log dell'addon:
 - Assicurati che Docker abbia sufficienti risorse (CPU/RAM)
 
 ### 🔌 Addon non raggiungibile
-- Verifica che il firewall permetta il traffico sulla porta 7860
+- Verifica che il firewall permetta il traffico sulla porta dell'addon (10000, oppure 7860 su Hugging Face)
+- Controlla `DATABASE_URL`: senza database l'addon non si avvia
 - Controlla che il container sia in esecuzione
 - Verifica che HOST e PORT siano impostati correttamente
 

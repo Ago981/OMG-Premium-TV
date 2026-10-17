@@ -6,6 +6,7 @@ import * as logger from './logger';
 import { addonRouter } from './routes/addon-routes';
 import { webRouter } from './routes/web-routes';
 import { originGuard, securityHeaders } from './security/http';
+import { COUNTRY_PRESETS, THEMATIC_EPG } from './presets';
 import { I18N } from './web/i18n';
 
 export function createApp(): express.Express {
@@ -22,6 +23,11 @@ export function createApp(): express.Express {
     app.get('/static/i18n.js', (_req, res) => {
         res.type('application/javascript').setHeader('Cache-Control', 'public, max-age=3600');
         res.send(i18nJs);
+    });
+    const presetsJs = `window.OMG_PRESETS = ${JSON.stringify({ countries: COUNTRY_PRESETS, thematic: THEMATIC_EPG })};`;
+    app.get('/static/presets.js', (_req, res) => {
+        res.type('application/javascript').setHeader('Cache-Control', 'public, max-age=3600');
+        res.send(presetsJs);
     });
     app.use('/static', express.static(path.join(env.rootDir, 'public'), { maxAge: '1h', index: false }));
 

@@ -1,12 +1,6 @@
 # ---- build: compila TypeScript/TSX in dist/
 FROM node:22-slim AS build
 WORKDIR /app
-# Strumenti per compilare better-sqlite3 se non esiste un binario precompilato per l'architettura
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 make g++ && \
-    rm -rf /var/lib/apt/lists/*
-# Header di Node già presenti nell'immagine: niente download durante la compilazione
-ENV npm_config_nodedir=/usr/local
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
@@ -22,6 +16,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-requests ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+# DATABASE_URL (PostgreSQL) va passato a runtime
 ENV NODE_ENV=production \
     PORT=10000 \
     DATA_DIR=/app/data

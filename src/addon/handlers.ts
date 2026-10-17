@@ -2,6 +2,7 @@ import { appConfig, NO_SIGNAL_URL, SETTINGS_GENRE, SETTINGS_LOGO } from '../conf
 import { ensureSources, enqueue, getGuides, type ChannelGuide } from '../epg/epg-service';
 import * as logger from '../logger';
 import { getPlaylist, type PlaylistHandle } from '../playlist/playlist-service';
+import { countryPreset } from '../presets';
 import { getRuntime } from '../runtime';
 import type { ConfigRecord } from '../store/config-store';
 import type { Channel, StremioStream, UserConfig } from '../types';
@@ -65,12 +66,13 @@ function channelKey(ch: Channel): string {
 
 const sourceCache = new Map<string, { at: number; ids: number[] }>();
 
-/** Sorgenti EPG della configurazione: campo EPG oppure url-tvg della playlist. */
+/** Sorgenti EPG: campo EPG, poi url-tvg della playlist, infine la guida predefinita del paese scelto. */
 async function epgSourceIds(cfg: UserConfig, playlist: PlaylistHandle): Promise<number[]> {
     if (!cfg.epg_enabled) return [];
-    const urls = cfg.epg
+    let urls = cfg.epg
         ? cfg.epg.split(',').map(u => u.trim()).filter(Boolean)
         : playlist.data.epgUrls;
+    if (!urls.length && cfg.country) urls = countryPreset(cfg.country)?.epg || [];
     if (!urls.length) return [];
     const key = urls.join('\n');
     const cached = sourceCache.get(key);

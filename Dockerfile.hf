@@ -1,4 +1,6 @@
-# Hugging Face Spaces: container singolo, SQLite in /app/data (usa DATABASE_URL per PostgreSQL esterno)
+# Hugging Face Spaces. Imposta nei "Secrets" dello Space:
+#   DATABASE_URL   PostgreSQL esterno (es. Neon, Supabase, Aiven: hanno piani gratuiti)
+#   ADMIN_PASSWORD, PUBLIC_BASE_URL
 FROM node:22-slim
 
 ARG BRANCH=main

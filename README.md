@@ -24,7 +24,28 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ## 🔄 Changelog di OMG Premium TV
 
-### 🚀 Versione 7.0.0 (Attuale)
+### 🚀 Versione 8.0.0 (Attuale)
+
+Riscrittura completa in **TypeScript/TSX** con architettura multi-utente. Guida completa: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
+### ✨ Nuove funzionalità
+- **🆔 Configurazioni con ID e password**: ogni configurazione è salvata sul server con un ID casuale e protetta da password. In Stremio si installa un URL semplice, `https://tuodominio/c/<ID>/manifest.json`, **senza parametri**: playlist, EPG, proxy e password non compaiono più nell'indirizzo.
+- **🛠️ Pannello admin** (`/admin`): elenco di tutte le configurazioni, cancellazione di una o più configurazioni, stato delle guide EPG e delle playlist condivise, password di accesso per creare configurazioni, abilitazione degli script Python.
+- **🧭 Interfaccia a passaggi**: Playlist → Guida TV → Proxy → Avanzate → Conferma.
+- **🌍 Guide TV predefinite per tutto il mondo**: scegli il paese e aggiungi la guida epgshare01 (oltre 60 paesi e guide tematiche); se non indichi un EPG si usa quello della playlist o, in mancanza, quello del paese. Playlist iptv-org per oltre 200 paesi.
+- **📡 EPG centralizzato**: ogni URL EPG viene scaricato una sola volta e condiviso da tutte le configurazioni (stessi ID canale = stessi dati). Lettura in streaming anche di file `.gz` molto grandi, abbinamento anche per nome del canale.
+- **🔀 EasyProxy**: supporto a [EasyProxy](https://github.com/realbestia1/EasyProxy) oltre a MediaFlow Proxy, con riconoscimento automatico, pulsante "Verifica proxy" e chiavi **DRM ClearKey** lette dalle playlist (`#KODIPROP`).
+- **📱 Nuvio**: compatibilità con [Nuvio](https://github.com/tapframe/NuvioStreaming); gli header di riproduzione sono inviati anche nel formato standard `proxyHeaders`.
+- **☁️ Cloudflare**: Tunnel (nessuna porta aperta) o Worker (`cloudflare/worker.js`) per nascondere l'indirizzo del server; link degli stream mascherati e cifrati (`/s/<token>`).
+- **🐘 PostgreSQL**: database unico per configurazioni, playlist ed EPG (`docker-compose.yml` lo avvia in automatico).
+
+### 🔧 Miglioramenti e sicurezza
+- Script Python eseguiti in una cartella dedicata per configurazione, con timeout e senza accesso alle variabili segrete del server.
+- Protezione da SSRF (URL verso la rete locale bloccati salvo `ALLOW_PRIVATE_URLS=true`), login con limite di tentativi, Content-Security-Policy, escape automatico dei campi nelle pagine.
+- Endpoint `/health` per il monitoraggio e healthcheck Docker.
+- I vecchi link `/<base64>/manifest.json` continuano a funzionare e si possono migrare dal wizard.
+
+### 🚀 Versione 7.0.0
 
 ### ✨ Nuove funzionalità
 - **🔒 Protezione password della home**: Opzione nella web UI per proteggere l’accesso alla pagina di configurazione con una password. Se attivata, chi apre la home (o il link «Configura» da Stremio) deve inserire la password; l’uso dell’addon da Stremio non richiede password.
@@ -80,14 +101,14 @@ Per dettagli completi sul funzionamento delle nuove funzionalità, consulta il m
 ## 🚀 Iniziamo: Installazione
 
 ### 🐳 Deploy su DOCKER
-- Per poter procedere devi prima fare l'installazione tramite docker su Hugging Face o su VPS.
-- [Segui la guida qui](docker-install.md) e poi ritorna a questa pagina una volta disponibile il sito web del tuo addon.
+- Per poter procedere devi prima fare l'installazione tramite docker su Hugging Face o su VPS. Serve un database **PostgreSQL**.
+- [Segui la guida qui](docs/DEPLOY.md) (Docker Compose con PostgreSQL e Cloudflare) oppure la [guida rapida](docker-install.md), poi ritorna a questa pagina una volta disponibile il sito web del tuo addon.
 - Se tutte queste cose ti sembrano incomprensibili FERMATI; cerca una guida on line su docker, guarda la sezione supporto in basso a questa pagina o chiedi aiuto ad un AI 😊
 
 ### 📲 Installazione dell'addon
-1. Apri la pagina web di configurazione OMG Premium TV
-2. Configura l'addon secondo le tue esigenze
-3. Clicca sul pulsante **INSTALLA SU STREMIO** 🔘
+1. Apri la pagina web di OMG Premium TV e scegli **Crea configurazione**
+2. Segui i passaggi del wizard e scegli una password
+3. Annota l'**ID** e la password, poi clicca su **INSTALLA SU STREMIO** 🔘 (con Nuvio: copia l'URL del manifest e aggiungilo tra gli addon)
 4. Stremio si aprirà automaticamente e ti chiederà di confermare l'installazione
 5. Clicca su **Installa** ✅
 

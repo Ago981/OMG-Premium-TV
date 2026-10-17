@@ -5,11 +5,12 @@ import * as logger from '../logger';
 import { encrypt } from '../security/crypto';
 import type { Channel, StreamHeaders, StremioStream, UserConfig } from '../types';
 import type { PythonResolver } from '../python/python-resolver';
+import { buildProxyUrl, proxyLabel, resolveProxyKind, streamType, type ProxyKind } from './proxy';
 
 /**
- * Costruzione degli stream: originali, via proxy MediaFlow, risolti dal resolver Python.
+ * Costruzione degli stream: originali, via proxy (MediaFlow o EasyProxy), risolti dal resolver Python.
  * Con il mascheramento attivo l'URL reale (proxy + api_password + sorgente) non compare mai
- * nelle risposte dell'addon: Stremio riceve /s/<token cifrato> che fa redirect alla destinazione.
+ * nelle risposte dell'addon: Stremio/Nuvio ricevono /s/<token cifrato> che fa redirect alla destinazione.
  */
 
 const EXCLUDED_DOMAINS = ['pluto.tv'];
@@ -30,32 +31,6 @@ function langAbbr(cfg: UserConfig): string {
 function pick(headers: StreamHeaders, ...names: string[]): string | undefined {
     for (const n of names) if (headers[n]) return headers[n];
     return undefined;
-}
-
-type StreamType = 'HLS' | 'DASH' | 'HTTP' | 'PHP';
-
-function streamType(url: string): StreamType {
-    if (url.endsWith('.mpd')) return 'DASH';
-    if (url.endsWith('.mp4')) return 'HTTP';
-    if (url.endsWith('.php') || url.includes('/stream/stream-') || url.includes('daddylive.dad') || url.includes('/extractor/video')) return 'PHP';
-    return 'HLS';
-}
-
-export function buildProxyUrl(streamUrl: string, headers: StreamHeaders, cfg: UserConfig): string | null {
-    if (!cfg.proxy || !cfg.proxy_pwd || !streamUrl) return null;
-    const base = cfg.proxy.replace(/\/+$/, '');
-    const params = new URLSearchParams({ api_password: cfg.proxy_pwd, d: streamUrl });
-    params.set('h_user-agent', pick(headers, 'User-Agent', 'user-agent') || appConfig.defaultUserAgent);
-    const referer = pick(headers, 'referer', 'Referer', 'referrer', 'Referrer');
-    if (referer) params.set('h_referer', referer);
-    const origin = pick(headers, 'origin', 'Origin');
-    if (origin) params.set('h_origin', origin);
-
-    // Stessa scelta dell'endpoint della versione precedente (basata solo sull'estensione)
-    if (streamUrl.endsWith('.mpd')) return `${base}/proxy/mpd/manifest.m3u8?${params}`;
-    if (streamUrl.endsWith('.mp4')) return `${base}/proxy/stream?${params}`;
-    if (streamUrl.endsWith('.php')) return `${base}/extractor/video?host=DLHD&redirect_stream=true&${params}`;
-    return `${base}/proxy/hls/manifest.m3u8?${params}`;
 }
 
 async function proxyHealthy(proxyUrl: string, headers: StreamHeaders, logKey: string): Promise<boolean> {
@@ -89,25 +64,51 @@ export function maskUrl(url: string, ctx: StreamContext): string {
     return `${ctx.baseUrl}/s/${token}`;
 }
 
+/**
+ * Header di riproduzione nel formato standard (behaviorHints.proxyHeaders): è quello letto da Nuvio
+ * e dal server di streaming di Stremio. Il campo "headers" resta per compatibilità con AIOStreams.
+ * Si aggiungono solo se servono davvero (Referer/Origin/User-Agent non predefinito).
+ */
+function playbackHints(headers: StreamHeaders | undefined): Record<string, unknown> {
+    const hints: Record<string, unknown> = { notWebReady: false, bingeGroup: 'tv' };
+    if (!headers) return hints;
+    const request: StreamHeaders = {};
+    const ua = pick(headers, 'User-Agent', 'user-agent');
+    if (ua && ua !== appConfig.defaultUserAgent) request['User-Agent'] = ua;
+    const referer = pick(headers, 'referer', 'Referer', 'referrer', 'Referrer');
+    if (referer) request['Referer'] = referer;
+    const origin = pick(headers, 'origin', 'Origin');
+    if (origin) request['Origin'] = origin;
+    for (const [k, v] of Object.entries(headers)) {
+        if (!/^(user-agent|referr?er|origin)$/i.test(k)) request[k] = v;
+    }
+    if (Object.keys(request).length) {
+        hints.notWebReady = true;
+        hints.proxyHeaders = { request };
+    }
+    return hints;
+}
+
 interface StreamInput {
     name: string;
     originalName: string;
     url: string;
     headers: StreamHeaders;
+    clearkey?: string;
 }
 
 function directStream(input: StreamInput, cfg: UserConfig, icon = '📺', suffix = ''): StremioStream {
     return {
         name: input.name,
-        title: `${icon} ${input.originalName || input.name} [${langAbbr(cfg)}]${suffix}`,
+        title: `${icon} ${input.originalName || input.name} [${langAbbr(cfg)}]${suffix}`.trimStart(),
         url: input.url,
         headers: input.headers,
         language: cfg.language,
-        behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
+        behaviorHints: playbackHints(input.headers)
     };
 }
 
-async function proxyStreams(input: StreamInput, ctx: StreamContext): Promise<StremioStream[]> {
+async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyKind): Promise<StremioStream[]> {
     const cfg = ctx.config;
     if (cfg.proxy && input.url.includes(cfg.proxy)) return [];
     if (EXCLUDED_DOMAINS.some(d => input.url.includes(d))) {
@@ -115,19 +116,20 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext): Promise<Str
     }
     if (!cfg.proxy || !cfg.proxy_pwd) return [];
 
-    let proxyUrl = buildProxyUrl(input.url, input.headers, cfg) as string;
+    let proxyUrl = buildProxyUrl(kind, input.url, input.headers, cfg, input.clearkey) as string;
     let ok = await proxyHealthy(proxyUrl, input.headers, ctx.configId);
-    if (!ok && !input.url.endsWith('/')) {
-        const withSlash = buildProxyUrl(input.url + '/', input.headers, cfg) as string;
+    if (!ok && !input.url.endsWith('/') && !input.clearkey) {
+        const withSlash = buildProxyUrl(kind, input.url + '/', input.headers, cfg) as string;
         if (await proxyHealthy(withSlash, input.headers, ctx.configId)) {
             proxyUrl = withSlash;
             ok = true;
         }
     }
     if (ok) {
+        const type = input.clearkey ? 'DASH ClearKey' : streamType(input.url);
         return [{
             name: input.name,
-            title: `🌐 ${input.originalName} [${langAbbr(cfg)}]\n[Proxy ${streamType(input.url)}]`,
+            title: `🌐 ${input.originalName} [${langAbbr(cfg)}]\n[${proxyLabel(kind)} ${type}]`,
             url: proxyUrl,
             language: cfg.language,
             behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
@@ -137,16 +139,12 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext): Promise<Str
     return cfg.force_proxy ? [{ ...directStream(input, cfg, ''), title: `${input.originalName} [${langAbbr(cfg)}]` }] : [];
 }
 
-async function originalStreams(inputs: StreamInput[], ctx: StreamContext): Promise<StremioStream[]> {
+async function originalStreams(inputs: StreamInput[], ctx: StreamContext, kind: ProxyKind | null): Promise<StremioStream[]> {
     const out: StremioStream[] = [];
-    const proxyOn = !!(ctx.config.proxy && ctx.config.proxy_pwd);
     for (const input of inputs) {
-        if (ctx.config.force_proxy) {
-            if (proxyOn) out.push(...await proxyStreams(input, ctx));
-        } else {
-            out.push(directStream(input, ctx.config));
-            if (proxyOn) out.push(...await proxyStreams(input, ctx));
-        }
+        // "Forza proxy" nasconde gli stream diretti solo se un proxy è effettivamente configurato
+        if (!ctx.config.force_proxy || !kind) out.push(directStream(input, ctx.config));
+        if (kind) out.push(...await proxyStreams(input, ctx, kind));
     }
     return out;
 }
@@ -164,7 +162,7 @@ async function resolvedStreams(channel: Channel, ctx: StreamContext): Promise<St
         if (origin) headers['Origin'] = origin;
         const r = await ctx.resolver.resolveLink(s.url, headers, channel.name, proxyConfig);
         if (!r || !r.resolved_url) return null;
-        const input: StreamInput = { name: channel.name, originalName: s.name || channel.name, url: r.resolved_url, headers: r.headers || headers };
+        const input: StreamInput = { name: channel.name, originalName: s.name || channel.name, url: r.resolved_url, headers: r.headers || headers, clearkey: s.clearkey };
         if (r.resolved_url === s.url) return directStream(input, cfg);
         return { ...directStream(input, cfg, '🧩', '\n[Resolved]'), name: channel.name };
     }));
@@ -173,11 +171,13 @@ async function resolvedStreams(channel: Channel, ctx: StreamContext): Promise<St
 
 export async function buildStreams(channel: Channel, ctx: StreamContext): Promise<StremioStream[]> {
     const cfg = ctx.config;
+    const kind: ProxyKind | null = cfg.proxy && cfg.proxy_pwd ? await resolveProxyKind(cfg) : null;
     const inputs: StreamInput[] = channel.streamInfo.urls.map(s => ({
         name: channel.name,
         originalName: s.name,
         url: s.url,
-        headers: { ...s.headers, 'User-Agent': s.headers['User-Agent'] || appConfig.defaultUserAgent }
+        headers: { ...s.headers, 'User-Agent': s.headers['User-Agent'] || appConfig.defaultUserAgent },
+        clearkey: s.clearkey
     }));
 
     let streams: StremioStream[] = [];
@@ -185,22 +185,21 @@ export async function buildStreams(channel: Channel, ctx: StreamContext): Promis
         try {
             const resolved = await resolvedStreams(channel, ctx);
             if (resolved.length) {
-                const proxyOn = !!(cfg.proxy && cfg.proxy_pwd);
-                if (!cfg.force_proxy || !proxyOn) streams.push(...resolved);
-                if (proxyOn) {
+                if (!cfg.force_proxy || !kind) streams.push(...resolved);
+                if (kind) {
                     for (const r of resolved) {
-                        streams.push(...await proxyStreams({ name: r.name, originalName: r.title, url: r.url, headers: r.headers || {} }, ctx));
+                        streams.push(...await proxyStreams({ name: r.name, originalName: r.title, url: r.url, headers: r.headers || {} }, ctx, kind));
                     }
                 }
             } else {
-                streams = await originalStreams(inputs, ctx);
+                streams = await originalStreams(inputs, ctx, kind);
             }
         } catch (e) {
             logger.error(ctx.configId, 'Stream resolution error:', logger.errMsg(e));
-            streams = await originalStreams(inputs, ctx);
+            streams = await originalStreams(inputs, ctx, kind);
         }
     } else {
-        streams = await originalStreams(inputs, ctx);
+        streams = await originalStreams(inputs, ctx, kind);
     }
 
     // Gli header restano invariati: il player li invia anche dopo il redirect

@@ -2,6 +2,8 @@
 
 ***[🇮🇹 Leggi in italiano](README.md)*** - ***[🇬🇧 Read in English](README-EN.md)*** - ***[🇫🇷 Lire en Français](README-FR.md)*** - ***[🇪🇸 Leer en español](README-ES.md)***
 
+> 🚀 **Version 8.0.0** : réécrite en TypeScript/TSX. Chaque configuration est enregistrée sur le serveur avec un **ID et un mot de passe** et s'installe avec une URL simple `https://votre-domaine/c/<ID>/manifest.json`. Panneau d'administration sur `/admin`, assistant par étapes, guides EPG prédéfinis par pays, prise en charge d'**EasyProxy** et MediaFlow, compatibilité **Nuvio** et Cloudflare. **PostgreSQL requis.** Voir [docs/DEPLOY.md](docs/DEPLOY.md) (en italien).
+
 ## 👋 Introduction
 
 Bienvenue dans OMG Premium TV, l'addon pour Stremio qui vous permet de regarder vos chaînes TV et IPTV préférées à partir de playlists M3U/M3U8, enrichies d'informations sur les programmes (EPG). Ce guide vous aidera à tirer le meilleur parti de toutes les fonctionnalités disponibles.

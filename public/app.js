@@ -103,6 +103,7 @@
                 var code = a.getAttribute('data-lang');
                 try { localStorage.setItem('omg_tv_lang', code); } catch (err) { /* ignore */ }
                 applyLanguage(code);
+                document.dispatchEvent(new Event('omg:language'));
             });
         });
         document.querySelectorAll('[data-toggle]').forEach(function (header) {
@@ -159,28 +160,29 @@
     }
 
     // ------------------------------------------------------------ editor configurazione
-    var PRESET_COUNTRIES = [
-        ['Albania', 'al'], ['Argentina', 'ar'], ['Armenia', 'am'], ['Australia', 'au'], ['Austria', 'at'], ['Belarus', 'by'],
-        ['Belgium', 'be'], ['Bolivia', 'bo'], ['Bosnia and Herzegovina', 'ba'], ['Brazil', 'br'], ['Bulgaria', 'bg'], ['Canada', 'ca'],
-        ['Chile', 'cl'], ['Colombia', 'co'], ['Costa Rica', 'cr'], ['Croatia', 'hr'], ['Czech Republic', 'cz'], ['Denmark', 'dk'],
-        ['Dominican Republic', 'do'], ['Ecuador', 'ec'], ['Egypt', 'eg'], ['El Salvador', 'sv'], ['Finland', 'fi'], ['France', 'fr'],
-        ['Georgia', 'ge'], ['Germany', 'de'], ['Ghana', 'gh'], ['Greece', 'gr'], ['Guatemala', 'gt'], ['Honduras', 'hn'],
-        ['Hong Kong', 'hk'], ['Hungary', 'hu'], ['Iceland', 'is'], ['India', 'in'], ['Indonesia', 'id'], ['Israel', 'il'],
-        ['Italy', 'it'], ['Japan', 'jp'], ['Latvia', 'lv'], ['Lebanon', 'lb'], ['Lithuania', 'lt'], ['Luxembourg', 'lu'],
-        ['North Macedonia', 'mk'], ['Malaysia', 'my'], ['Malta', 'mt'], ['Mexico', 'mx'], ['Montenegro', 'me'], ['Netherlands', 'nl'],
-        ['New Zealand', 'nz'], ['Nicaragua', 'ni'], ['Nigeria', 'ng'], ['Norway', 'no'], ['Panama', 'pa'], ['Paraguay', 'py'],
-        ['Peru', 'pe'], ['Philippines', 'ph'], ['Poland', 'pl'], ['Portugal', 'pt'], ['Romania', 'ro'], ['Russia', 'ru'],
-        ['Saudi Arabia', 'sa'], ['Serbia', 'rs'], ['Singapore', 'sg'], ['Slovenia', 'si'], ['South Africa', 'za'], ['South Korea', 'kr'],
-        ['Spain', 'es'], ['Sweden', 'se'], ['Switzerland', 'ch'], ['Taiwan', 'tw'], ['Thailand', 'th'], ['Turkey', 'tr'],
-        ['Uganda', 'ug'], ['Ukraine', 'ua'], ['United Arab Emirates', 'ae'], ['United Kingdom', 'gb'], ['United States', 'us'], ['Uruguay', 'uy'],
-        ['Venezuela', 've'], ['Vietnam', 'vn'], ['Zimbabwe', 'zw']
-    ];
+    var PRESETS = window.OMG_PRESETS || { countries: [], thematic: [] };
 
-    function flag(code) {
-        return code.toUpperCase().split('').map(function (c) { return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65); }).join('');
+    function flag(iso) {
+        if (!/^[a-z]{2}$/i.test(iso)) return '';
+        return iso.toUpperCase().split('').map(function (c) { return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65); }).join('');
     }
 
-    var CONFIG_FIELDS = ['label', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+    /** Nome del paese nella lingua dell'interfaccia (Intl.DisplayNames), con ripiego sul codice. */
+    function countryName(iso) {
+        try {
+            return new Intl.DisplayNames([lang], { type: 'region' }).of(iso.toUpperCase()) || iso.toUpperCase();
+        } catch (e) {
+            return iso.toUpperCase();
+        }
+    }
+
+    function sortedCountries(filter) {
+        return PRESETS.countries.filter(filter || function () { return true; })
+            .map(function (c) { return { c: c, name: countryName(c.iso) }; })
+            .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
+    }
+
+    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
         'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 
@@ -210,20 +212,169 @@
         var id = form.getAttribute('data-id');
         var base = '/api/configs/' + encodeURIComponent(id);
 
-        var sel = $('#presetCountry');
-        PRESET_COUNTRIES.forEach(function (c) {
-            var o = document.createElement('option');
-            o.value = c[1];
-            o.textContent = flag(c[1]) + ' ' + c[0];
-            sel.appendChild(o);
+        // ---- paese e preset
+        var countrySel = $('#countrySelect');
+        var epgSel = $('#epgPresetSelect');
+
+        function fillCountrySelect() {
+            var current = countrySel.value || countrySel.getAttribute('data-value') || '';
+            countrySel.querySelectorAll('option[data-code]').forEach(function (o) { o.remove(); });
+            sortedCountries().forEach(function (item) {
+                var o = document.createElement('option');
+                o.value = item.c.code;
+                o.setAttribute('data-code', item.c.code);
+                o.textContent = flag(item.c.iso) + ' ' + item.name + (item.c.epg.length ? '' : ' ·');
+                countrySel.appendChild(o);
+            });
+            countrySel.value = current;
+        }
+
+        function fillEpgSelect() {
+            epgSel.innerHTML = '';
+            var g1 = document.createElement('optgroup');
+            g1.label = t('epg_country_group');
+            sortedCountries(function (c) { return c.epg.length > 0; }).forEach(function (item) {
+                var o = document.createElement('option');
+                o.value = 'c:' + item.c.code;
+                o.textContent = flag(item.c.iso) + ' ' + item.name + (item.c.epg.length > 1 ? ' (' + item.c.epg.length + ')' : '');
+                g1.appendChild(o);
+            });
+            var g2 = document.createElement('optgroup');
+            g2.label = t('epg_thematic_group');
+            PRESETS.thematic.forEach(function (th) {
+                var o = document.createElement('option');
+                o.value = 't:' + th.id;
+                o.textContent = th.name;
+                g2.appendChild(o);
+            });
+            epgSel.appendChild(g1);
+            epgSel.appendChild(g2);
+            syncEpgPreset();
+        }
+
+        function presetFor(code) {
+            for (var i = 0; i < PRESETS.countries.length; i++) if (PRESETS.countries[i].code === code) return PRESETS.countries[i];
+            return null;
+        }
+
+        /** Il preset EPG proposto segue il paese scelto. */
+        function syncEpgPreset() {
+            var p = presetFor(countrySel.value);
+            if (p && p.epg.length) epgSel.value = 'c:' + p.code;
+            var info = $('#epgFallbackInfo');
+            if (info) {
+                info.textContent = t('epg_fallback_hint') + (p && p.epg.length ? ' ' + t('epg_country_default').replace('{country}', countryName(p.iso)) : '');
+            }
+        }
+
+        fillCountrySelect();
+        fillEpgSelect();
+        countrySel.addEventListener('change', syncEpgPreset);
+        document.addEventListener('omg:language', function () { fillCountrySelect(); fillEpgSelect(); });
+
+        // ---- wizard
+        var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
+        var stepButtons = Array.prototype.slice.call(document.querySelectorAll('#stepper [data-goto]'));
+        var current = 0;
+        var reached = mode === 'edit' ? steps.length - 1 : 0;
+
+        function stepValid(index) {
+            var fields = steps[index].querySelectorAll('input, select, textarea');
+            for (var i = 0; i < fields.length; i++) {
+                if (!fields[i].checkValidity()) { fields[i].reportValidity(); return false; }
+            }
+            if (steps[index].getAttribute('data-step') === 'source' && form.m3u.value.trim() === '') {
+                form.m3u.reportValidity();
+                return false;
+            }
+            return true;
+        }
+
+        function showStep(index) {
+            current = Math.max(0, Math.min(index, steps.length - 1));
+            reached = Math.max(reached, current);
+            steps.forEach(function (st, i) { st.classList.toggle('active', i === current); });
+            stepButtons.forEach(function (b, i) {
+                b.classList.toggle('active', i === current);
+                b.classList.toggle('done', i < current || (mode === 'edit' && i !== current));
+                b.disabled = i > reached;
+            });
+            var last = current === steps.length - 1;
+            $('[data-action="prev"]').style.visibility = current === 0 ? 'hidden' : 'visible';
+            $('[data-action="next"]').style.display = last ? 'none' : '';
+            $('.submit-btn').style.display = last || mode === 'edit' ? '' : 'none';
+            if (steps[current].getAttribute('data-step') === 'confirm') renderSummary();
+            clearError($('#configError'));
+        }
+
+        function stepOfField(name) {
+            var el = form.elements[name];
+            var node = el && (el.length && !el.tagName ? el[0] : el);
+            var section = node && node.closest ? node.closest('.step') : null;
+            return section ? steps.indexOf(section) : -1;
+        }
+
+        function renderSummary() {
+            var d = readConfig(form);
+            var p = presetFor(d.country);
+            var epgText = !d.epg_enabled ? t('no') : (d.epg ? d.epg.split(',').length + ' URL' : (p && p.epg.length ? t('summary_epg_auto') : 'url-tvg'));
+            var rows = [
+                [t('country'), p ? flag(p.iso) + ' ' + countryName(p.iso) : '—'],
+                ['M3U', d.m3u.split(',').filter(Boolean).length + ' URL'],
+                ['EPG', epgText],
+                ['Proxy', d.proxy ? (d.proxy_type === 'auto' ? t('proxy_type_auto') : d.proxy_type) : t('no')],
+                [t('mask_streams'), d.mask_streams ? t('yes') : t('no')],
+                [t('update_interval'), d.update_interval || '12:00']
+            ];
+            $('#configSummary').innerHTML = '<h3>' + escapeHtml(t('summary_title')) + '</h3>' + statusTable(rows);
+        }
+
+        stepButtons.forEach(function (b, i) {
+            b.addEventListener('click', function () {
+                if (mode === 'new' && i > current && !stepValid(current)) return;
+                showStep(i);
+            });
         });
+        showStep(0);
 
         var actions = {
-            preset: function () {
-                if (!sel.value) return;
-                if (!form.m3u.readOnly) form.m3u.value = 'https://iptv-org.github.io/iptv/countries/' + sel.value + '.m3u';
-                form.epg.value = 'https://iptv-epg.org/files/epg-' + sel.value + '.xml';
+            prev: function () { showStep(current - 1); },
+            next: function () { if (stepValid(current)) showStep(current + 1); },
+            'use-country-playlist': function () {
+                var p = presetFor(countrySel.value);
+                if (!p) { countrySel.reportValidity(); return; }
+                if (!p.m3u) { toast(t('no_country_playlist'), 'error'); return; }
+                if (form.m3u.readOnly) return;
+                var list = form.m3u.value.split(',').map(function (u) { return u.trim(); }).filter(Boolean);
+                if (list.indexOf(p.m3u) < 0) list.push(p.m3u);
+                form.m3u.value = list.join(',');
+                if (p.epg.length && !form.epg.value) form.epg_enabled.checked = true;
+                syncEpgPreset();
+            },
+            'add-epg-preset': function () {
+                var v = epgSel.value || '';
+                var urls = [];
+                if (v.indexOf('c:') === 0) urls = (presetFor(v.slice(2)) || { epg: [] }).epg;
+                if (v.indexOf('t:') === 0) PRESETS.thematic.forEach(function (th) { if ('t:' + th.id === v) urls = [th.url]; });
+                var list = form.epg.value.split(',').map(function (u) { return u.trim(); }).filter(Boolean);
+                urls.forEach(function (u) { if (list.indexOf(u) < 0) list.push(u); });
+                form.epg.value = list.join(',');
                 form.epg_enabled.checked = true;
+                toast(t('epg_preset_added'));
+            },
+            'proxy-test': function () {
+                var out = $('#proxyTestResult');
+                out.textContent = t('loader_default');
+                out.className = 'small muted';
+                api('POST', '/api/proxy-test', { proxy: form.proxy.value.trim(), proxy_pwd: form.proxy_pwd.value }).then(function (d) {
+                    if (d.success) {
+                        out.textContent = '✅ ' + d.label + (d.version ? ' ' + d.version : '') + ' — ' + t('proxy_test_ok');
+                        out.className = 'small ok-text';
+                    } else {
+                        out.textContent = '❌ ' + (d.message ? errorText(d.message) : t('proxy_test_fail'));
+                        out.className = 'small error-text';
+                    }
+                });
             },
             'copy-manifest': function () {
                 var url = $('#manifestUrl').textContent.trim();
@@ -358,7 +509,19 @@
             e.preventDefault();
             var err = $('#configError');
             clearError(err);
+            for (var i = 0; i < steps.length; i++) {
+                if (mode === 'edit' || i <= current) {
+                    var bad = steps[i].querySelector(':invalid');
+                    if (bad) { showStep(i); bad.reportValidity(); return; }
+                }
+            }
             var data = readConfig(form);
+            function fail(message) {
+                var field = String(message || '').split(':')[1];
+                var idx = field ? stepOfField(field) : -1;
+                if (idx >= 0) showStep(idx);
+                showError(err, message);
+            }
             if (mode === 'new') {
                 data.password = form.password.value;
                 data.confirm = form.confirm.value;
@@ -366,13 +529,13 @@
                 showLoader(t('loader_creating'));
                 api('POST', '/api/configs', data).then(function (d) {
                     hideLoader();
-                    if (d.success) location.href = d.configureUrl; else showError(err, d.message);
+                    if (d.success) location.href = d.configureUrl; else fail(d.message);
                 });
             } else {
                 showLoader(t('loader_saving'));
                 api('PUT', base, data).then(function (d) {
                     hideLoader();
-                    if (d.success) toast(t('config_saved')); else showError(err, d.message);
+                    if (d.success) toast(t('config_saved')); else fail(d.message);
                 });
             }
         });

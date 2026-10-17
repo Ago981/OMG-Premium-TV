@@ -23,6 +23,7 @@ import {
     normalizeConfig, passwordVersion, setConfigPassword, updateConfig, type ConfigRecord
 } from '../store/config-store';
 import type { UserConfig } from '../types';
+import { detectProxy, proxyLabel } from '../addon/proxy';
 import { render } from '../web/jsx';
 import { AdminPage } from '../web/pages/Admin';
 import { AdminLoginPage, ConfigLoginPage, GatePage, HomePage } from '../web/pages/Auth';
@@ -204,6 +205,15 @@ api.post('/configs', wrap(async (req, res) => {
         if (msg) return fail(res, 400, msg);
         throw e;
     }
+}));
+
+/** Verifica un proxy prima di salvarlo: tipo (MediaFlow/EasyProxy) e raggiungibilità. */
+api.post('/proxy-test', wrap(async (req, res) => {
+    if (limited(req, res, 'proxy-test')) return;
+    const proxy = String(req.body?.proxy || '').trim();
+    if (!/^https?:\/\//.test(proxy)) return fail(res, 400, 'invalid_url:proxy');
+    const info = await detectProxy(proxy, String(req.body?.proxy_pwd || ''), true);
+    res.json({ success: info.reachable, kind: info.kind, version: info.version || null, label: proxyLabel(info.kind) });
 }));
 
 api.post('/configs/:id/login', wrap(async (req, res) => {

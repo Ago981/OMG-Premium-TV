@@ -34,9 +34,20 @@ interface ParsedLine {
     group: string[];
     tvg: Record<string, string>;
     headers: StreamHeaders;
+    clearkey?: string;
 }
 
-function parseHeaders(lines: string[], start: number, extinf: string): { headers: StreamHeaders; next: number } {
+/** "kid:key" in esadecimale (anche più coppie separate da virgola); altri formati non supportati. */
+export function parseClearKey(value: string): string | undefined {
+    const pairs = value.split(',').map(p => p.trim()).filter(p => /^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}$/.test(p));
+    return pairs.length ? pairs.join(',').toLowerCase() : undefined;
+}
+
+/**
+ * Legge le righe di opzioni tra #EXTINF e l'URL: #EXTVLCOPT (header), #EXTHTTP (header JSON)
+ * e #KODIPROP (chiavi ClearKey per DASH). Le altre righe commento vengono ignorate.
+ */
+function parseOptions(lines: string[], start: number, extinf: string): { headers: StreamHeaders; clearkey?: string; next: number } {
     let i = start;
     const extinfHeaders: StreamHeaders = {};
     for (const opt of extinf.match(/http-[^=]+=["']([^"']+)/g) || []) {
@@ -45,31 +56,38 @@ function parseHeaders(lines: string[], start: number, extinf: string): { headers
     }
 
     const vlcHeaders: StreamHeaders = {};
-    while (i < lines.length && lines[i].trim().startsWith('#EXTVLCOPT:')) {
-        const opt = lines[i].trim().substring('#EXTVLCOPT:'.length).trim();
-        const [key, ...value] = opt.split('=');
-        vlcHeaders[key.replace('http-', '')] = value.join('=');
-        i++;
-    }
-
     const httpHeaders: StreamHeaders = {};
-    if (i < lines.length && lines[i].trim().startsWith('#EXTHTTP:')) {
-        try {
-            Object.assign(httpHeaders, JSON.parse(lines[i].trim().substring('#EXTHTTP:'.length)));
-            i++;
-        } catch {
-            // header JSON non valido: ignorato
+    let clearkey: string | undefined;
+    while (i < lines.length) {
+        const line = lines[i].trim();
+        if (!line.startsWith('#') || line.startsWith('#EXTINF:')) break;
+        if (line.startsWith('#EXTVLCOPT:')) {
+            const [key, ...value] = line.substring('#EXTVLCOPT:'.length).trim().split('=');
+            vlcHeaders[key.replace('http-', '')] = value.join('=');
+        } else if (line.startsWith('#EXTHTTP:')) {
+            try {
+                Object.assign(httpHeaders, JSON.parse(line.substring('#EXTHTTP:'.length)));
+            } catch {
+                // header JSON non valido: ignorato
+            }
+        } else if (line.startsWith('#KODIPROP:')) {
+            const [key, ...value] = line.substring('#KODIPROP:'.length).trim().split('=');
+            if (key.trim().toLowerCase() === 'inputstream.adaptive.license_key') {
+                clearkey = parseClearKey(value.join('=')) || clearkey;
+            }
         }
+        i++;
     }
 
     const headers: StreamHeaders = { ...extinfHeaders, ...vlcHeaders, ...httpHeaders };
     headers['User-Agent'] = httpHeaders['User-Agent'] || httpHeaders['user-agent'] ||
         vlcHeaders['user-agent'] || extinfHeaders['user-agent'] || appConfig.defaultUserAgent;
+    delete headers['user-agent'];
     if (vlcHeaders['referrer']) headers['referrer'] = vlcHeaders['referrer'];
     else if (vlcHeaders['referer']) headers['referrer'] = vlcHeaders['referer'];
     delete headers['referer'];
     if (vlcHeaders['origin']) headers['origin'] = vlcHeaders['origin'];
-    return { headers, next: i };
+    return { headers, clearkey, next: i };
 }
 
 function parseExtinf(line: string, headers: StreamHeaders, idSuffix: string): ParsedLine {
@@ -132,9 +150,10 @@ export class M3UParser {
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (line.startsWith('#EXTINF:')) {
-                const { headers, next } = parseHeaders(lines, i + 1, line);
+                const { headers, clearkey, next } = parseOptions(lines, i + 1, line);
                 i = next - 1;
                 current = parseExtinf(line, headers, this.idSuffix);
+                current.clearkey = clearkey;
             } else if (current && (line.startsWith('http') || line.toLowerCase() === 'null')) {
                 const normalized = normalizeId(current.tvg.id);
                 const id = normalizeId(this.remap.get(normalized) || normalized);
@@ -147,7 +166,7 @@ export class M3UParser {
                 for (const g of current.group) if (!channel.genre.includes(g)) channel.genre.push(g);
                 channel.streamInfo.urls.push(line.toLowerCase() === 'null'
                     ? { url: NO_SIGNAL_URL, name: NO_STREAM_NAME, headers: current.headers }
-                    : { url: line, name: current.name, headers: current.headers });
+                    : { url: line, name: current.name, headers: current.headers, ...(current.clearkey ? { clearkey: current.clearkey } : {}) });
                 current = null;
             }
         }

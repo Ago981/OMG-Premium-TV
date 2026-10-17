@@ -1,16 +1,10 @@
-import fs from 'fs';
-import path from 'path';
 import { env } from './env';
 
 /**
- * Accesso ai dati con due backend:
- *  - PostgreSQL (consigliato) quando è impostato DATABASE_URL
- *  - SQLite su file come ripiego per deploy a container singolo (Hugging Face, Render free)
+ * Accesso ai dati su PostgreSQL (DATABASE_URL).
  *
- * Le query si scrivono una volta con segnaposto `?` e SQL comune ai due motori
- * (ON CONFLICT, RETURNING); l'adapter Postgres converte i segnaposto in $1, $2...
- * Le transazioni non sono interattive: `batch()` esegue una lista di statement in modo atomico,
- * così su SQLite (connessione unica, sincrona) nessuna richiesta concorrente finisce nella transazione.
+ * Le query si scrivono con segnaposto `?` (convertiti in $1, $2...).
+ * `batch()` esegue una lista di statement in un'unica transazione.
  */
 
 export type Param = string | number | null;
@@ -21,7 +15,7 @@ export interface Statement {
 }
 
 export interface Db {
-    readonly kind: 'postgres' | 'sqlite';
+    readonly kind: 'postgres';
     all<T>(sql: string, params?: Param[]): Promise<T[]>;
     get<T>(sql: string, params?: Param[]): Promise<T | undefined>;
     run(sql: string, params?: Param[]): Promise<number>;
@@ -33,7 +27,7 @@ export interface Db {
 
 // ---------------------------------------------------------------- schema
 
-const SCHEMA_V1 = (pg: boolean) => `
+const SCHEMA_V1 = `
     CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -62,7 +56,7 @@ const SCHEMA_V1 = (pg: boolean) => `
     );
 
     CREATE TABLE IF NOT EXISTS epg_sources (
-        id ${pg ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT'},
+        id SERIAL PRIMARY KEY,
         url TEXT NOT NULL UNIQUE,
         status TEXT NOT NULL DEFAULT 'pending',
         last_error TEXT,
@@ -97,7 +91,7 @@ const SCHEMA_V1 = (pg: boolean) => `
     CREATE INDEX IF NOT EXISTS idx_epg_programs_stop ON epg_programs(stop_time);
 `;
 
-const MIGRATIONS: ((pg: boolean) => string)[] = [SCHEMA_V1];
+const MIGRATIONS: string[] = [SCHEMA_V1];
 
 function splitStatements(sql: string): string[] {
     return sql
@@ -114,7 +108,7 @@ async function migrate(db: Db): Promise<void> {
     const row = await db.get<{ version: number }>('SELECT version FROM schema_version');
     const current = row ? Number(row.version) : 0;
     for (let v = current; v < MIGRATIONS.length; v++) {
-        const statements: Statement[] = splitStatements(MIGRATIONS[v](db.kind === 'postgres')).map(sql => ({ sql }));
+        const statements: Statement[] = splitStatements(MIGRATIONS[v]).map(sql => ({ sql }));
         statements.push(v === 0 && !row
             ? { sql: 'INSERT INTO schema_version (version) VALUES (?)', params: [v + 1] }
             : { sql: 'UPDATE schema_version SET version = ?', params: [v + 1] });
@@ -130,7 +124,7 @@ function toPgSql(sql: string): string {
 }
 
 async function openPostgres(url: string): Promise<Db> {
-    const pg = await import('pg');
+    const { default: pg } = await import('pg');
     // BIGINT (20) e COUNT(*) arrivano come stringa: i timestamp in ms stanno comodamente in un Number
     pg.types.setTypeParser(20, v => parseInt(v, 10));
     const ssl = /sslmode=(require|verify)/.test(url) ? { rejectUnauthorized: !/sslmode=require/.test(url) } : undefined;
@@ -183,66 +177,17 @@ async function openPostgres(url: string): Promise<Db> {
     return db;
 }
 
-// ---------------------------------------------------------------- SQLite
-
-async function openSqlite(file: string): Promise<Db> {
-    const { default: Database } = await import('better-sqlite3');
-    if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
-    const sqlite = new Database(file);
-    sqlite.pragma('journal_mode = WAL');
-    sqlite.pragma('synchronous = NORMAL');
-    sqlite.pragma('busy_timeout = 5000');
-
-    const cache = new Map<string, import('better-sqlite3').Statement>();
-    const prepare = (sql: string) => {
-        let stmt = cache.get(sql);
-        if (!stmt) {
-            stmt = sqlite.prepare(sql);
-            if (cache.size > 500) cache.clear();
-            cache.set(sql, stmt);
-        }
-        return stmt;
-    };
-    const exec = (s: Statement) => {
-        const stmt = prepare(s.sql);
-        return stmt.reader ? stmt.all(...(s.params || [])) : stmt.run(...(s.params || []));
-    };
-
-    return {
-        kind: 'sqlite',
-        async all<T>(sql: string, params: Param[] = []) {
-            return prepare(sql).all(...params) as T[];
-        },
-        async get<T>(sql: string, params: Param[] = []) {
-            return prepare(sql).get(...params) as T | undefined;
-        },
-        async run(sql: string, params: Param[] = []) {
-            return prepare(sql).run(...params).changes;
-        },
-        async batch(statements: Statement[]) {
-            sqlite.transaction(() => statements.forEach(exec))();
-        },
-        async insertMany(table: string, columns: string[], rows: Param[][]) {
-            if (!rows.length) return;
-            const stmt = prepare(`INSERT OR IGNORE INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`);
-            sqlite.transaction(() => rows.forEach(r => stmt.run(...r)))();
-        },
-        async close() {
-            sqlite.close();
-        }
-    };
-}
-
 // ---------------------------------------------------------------- istanza globale
 
 let instance: Db | null = null;
 
-/** Apre il DB indicato (o quello da DATABASE_URL / DATA_DIR) ed esegue le migrazioni. */
+/** Apre il DB (DATABASE_URL) ed esegue le migrazioni. */
 export async function initDatabase(url = env.databaseUrl): Promise<Db> {
+    if (!/^postgres(ql)?:\/\//.test(url)) {
+        throw new Error('DATABASE_URL is required, e.g. postgres://user:password@host:5432/omg');
+    }
     if (instance) await instance.close();
-    instance = /^postgres(ql)?:\/\//.test(url)
-        ? await openPostgres(url)
-        : await openSqlite(url ? url.replace(/^sqlite:(\/\/)?/, '') : path.join(env.dataDir, 'omg.db'));
+    instance = await openPostgres(url);
     await migrate(instance);
     return instance;
 }

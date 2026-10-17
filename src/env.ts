@@ -28,10 +28,7 @@ export const env = {
     host: str('HOST', '0.0.0.0'),
     rootDir,
     dataDir: path.resolve(str('DATA_DIR', path.join(rootDir, 'data'))),
-    /**
-     * postgres://utente:password@host:5432/db → PostgreSQL (consigliato).
-     * Vuoto → SQLite in DATA_DIR/omg.db (per deploy a container singolo).
-     */
+    /** PostgreSQL (obbligatorio): postgres://utente:password@host:5432/db */
     databaseUrl: str('DATABASE_URL'),
 
     /** URL pubblico (es. https://tv.miodominio.it). Se assente viene ricavato dalla richiesta. */

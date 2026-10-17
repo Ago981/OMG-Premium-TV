@@ -17,7 +17,13 @@ export interface UserConfig {
     resolver_update_interval: string;
     /** Nasconde gli URL reali degli stream dietro /s/<token>. */
     mask_streams: boolean;
+    /** Tipo di proxy: rilevato automaticamente oppure forzato. */
+    proxy_type: ProxyType;
+    /** Codice paese scelto nei preset (solo per precompilare il wizard). */
+    country: string;
 }
+
+export type ProxyType = 'auto' | 'mediaflow' | 'easyproxy';
 
 export type StreamHeaders = Record<string, string>;
 
@@ -25,6 +31,8 @@ export interface StreamUrl {
     url: string;
     name: string;
     headers: StreamHeaders;
+    /** Chiavi ClearKey "KID:KEY[,KID:KEY]" da #KODIPROP (stream DASH cifrati). */
+    clearkey?: string;
 }
 
 export interface Channel {

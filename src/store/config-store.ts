@@ -40,7 +40,9 @@ export const DEFAULT_CONFIG: UserConfig = {
     resolver_script: '',
     resolver_enabled: false,
     resolver_update_interval: '',
-    mask_streams: true
+    mask_streams: true,
+    proxy_type: 'auto',
+    country: ''
 };
 
 const BOOL_KEYS = ['epg_enabled', 'force_proxy', 'resolver_enabled', 'mask_streams'] as const;
@@ -84,8 +86,8 @@ export function normalizeConfig(input: Record<string, unknown>, opts: { strict?:
             (out as unknown as Record<string, unknown>)[key] = cleanList(input[key]);
         }
     }
-    // Nei vecchi URL il campo mancante significava "non mascherare"
-    if (!('mask_streams' in input) && !opts.strict) out.mask_streams = true;
+    if (!['auto', 'mediaflow', 'easyproxy'].includes(out.proxy_type)) out.proxy_type = 'auto';
+    out.country = /^[a-z]{2}$/i.test(out.country) ? out.country.toLowerCase() : '';
     if (!opts.strict) return out;
 
     for (const key of ['m3u', 'epg', 'proxy', 'remapper_path', 'python_script_url', 'resolver_script'] as const) {

@@ -12,6 +12,7 @@ export function Layout(props: { title?: string; page: string; children?: Child; 
                 <title>{props.title ? `${m.name} · ${props.title}` : m.name}</title>
                 <link rel="stylesheet" href="/static/app.css" />
                 <script src="/static/i18n.js" defer></script>
+                <script src="/static/presets.js" defer></script>
                 <script src="/static/app.js" defer></script>
             </head>
             <body data-page={props.page}>
