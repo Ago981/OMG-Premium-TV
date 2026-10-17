@@ -2,7 +2,7 @@
 
 ***[🇮🇹 Leggi in italiano](README.md)*** - ***[🇬🇧 Read in English](README-EN.md)*** - ***[🇫🇷 Lire en Français](README-FR.md)*** - ***[🇪🇸 Leer en español](README-ES.md)***
 
-> 🚀 **Version 8.1.0**: rewritten in TypeScript/TSX with multi-user architecture, instant stream checks, "Proxy Only" enforcement, and dynamic catalogs. Each configuration is stored on the server with an **ID and a password** and installed with a plain `https://your-domain/c/<ID>/manifest.json` URL (no parameters). Admin panel at `/admin`, step-by-step setup wizard, worldwide preset TV guides (epgshare01) shared across users, **EasyProxy** and MediaFlow support (with ClearKey), **Nuvio** compatibility, Cloudflare Tunnel/Worker support. *Note: v7.0.0 is available on the dedicated `7.0.0` branch.* **PostgreSQL is required.** See [docs/DEPLOY.md](docs/DEPLOY.md) (Italian).
+> 🚀 **Version 8.1.0**: rewritten in TypeScript/TSX with multi-user architecture, instant stream checks, "Proxy Only" enforcement, smart permissive EPG matching, and dynamic catalogs. Each configuration is stored on the server with an **ID and a password** and installed with a plain `https://your-domain/c/<ID>/manifest.json` URL (no parameters). Admin panel at `/admin`, step-by-step setup wizard, worldwide preset TV guides (epgshare01) shared across users, **EasyProxy** and MediaFlow support (with ClearKey), **Nuvio** compatibility, Cloudflare Tunnel/Worker support. *Note: v7.0.0 is available on the dedicated `7.0.0` branch.* **PostgreSQL is required.** See [docs/DEPLOY.md](docs/DEPLOY.md) (Italian).
 
 ## 👋 Introduction
 
