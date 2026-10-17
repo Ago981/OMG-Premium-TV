@@ -28,6 +28,7 @@ export const DEFAULT_CONFIG: UserConfig = {
     m3u: '',
     epg: '',
     epg_enabled: false,
+    smart_epg: true,
     language: 'Italiano',
     proxy: '',
     proxy_pwd: '',
@@ -46,7 +47,7 @@ export const DEFAULT_CONFIG: UserConfig = {
     country: ''
 };
 
-const BOOL_KEYS = ['epg_enabled', 'resolver_enabled', 'mask_streams', 'force_proxy', 'aio_compatible'] as const;
+const BOOL_KEYS = ['epg_enabled', 'smart_epg', 'resolver_enabled', 'mask_streams', 'force_proxy', 'aio_compatible'] as const;
 const INTERVAL_RE = /^\d{1,2}:\d{2}$/;
 
 function toBool(v: unknown): boolean {

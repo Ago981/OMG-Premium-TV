@@ -2,7 +2,10 @@
 export interface UserConfig {
     m3u: string;
     epg: string;
+    /** Abilita l'EPG. */
     epg_enabled: boolean;
+    /** Abbinamento EPG intelligente e permissivo (ignora tag HD/SD, prefissi LCN, fallback su nome/titolo). */
+    smart_epg: boolean;
     language: string;
     proxy: string;
     proxy_pwd: string;

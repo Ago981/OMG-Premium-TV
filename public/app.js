@@ -182,7 +182,7 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
         'aio_compatible', 'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 

@@ -28,9 +28,10 @@ describe('database', { skip: url ? false : 'TEST_DATABASE_URL not set' }, () => 
     });
 
     test('normalizeConfig converts legacy string booleans and validates URLs', () => {
-        const c = normalizeConfig({ m3u: ' https://a/x.m3u ', epg_enabled: 'true', mask_streams: 'false', force_proxy: 'true', aio_compatible: 'false', unknown: 'x' });
+        const c = normalizeConfig({ m3u: ' https://a/x.m3u ', epg_enabled: 'true', smart_epg: 'true', mask_streams: 'false', force_proxy: 'true', aio_compatible: 'false', unknown: 'x' });
         assert.equal(c.m3u, 'https://a/x.m3u');
         assert.equal(c.epg_enabled, true);
+        assert.equal(c.smart_epg, true);
         assert.equal(c.mask_streams, false);
         assert.equal(c.force_proxy, true);
         assert.equal(c.aio_compatible, false);

@@ -88,7 +88,8 @@ async function epgSourceIds(cfg: UserConfig, playlist: PlaylistHandle): Promise<
 async function guidesFor(cfg: UserConfig, playlist: PlaylistHandle, channels: Channel[], upcoming = 2): Promise<Map<string, ChannelGuide>> {
     try {
         const ids = await epgSourceIds(cfg, playlist);
-        return await getGuides(ids, channels.map(ch => ({ key: channelKey(ch), tvgId: ch.streamInfo?.tvg?.id, name: ch.name })), upcoming);
+        const smart = cfg.smart_epg !== false;
+        return await getGuides(ids, channels.map(ch => ({ key: channelKey(ch), tvgId: ch.streamInfo?.tvg?.id, name: ch.name })), upcoming, smart);
     } catch (e) {
         logger.error('_', 'EPG lookup error:', logger.errMsg(e));
         return new Map();

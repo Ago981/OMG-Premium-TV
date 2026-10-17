@@ -96,6 +96,8 @@ function EpgStep(props: { c: UserConfig }) {
     return (
         <Step index={1}>
             <Check name="epg_enabled" checked={props.c.epg_enabled} labelKey="enable_epg" label="Enable EPG" />
+            <Check name="smart_epg" checked={props.c.smart_epg !== false} labelKey="smart_epg" label="Abbinamento EPG intelligente" />
+            <small className="hint" data-i18n="smart_epg_hint">Abbina l'EPG in modo permissivo (ignora tag HD/SD/4K, numeri canale e fallback su nome). Consigliato lasciarlo attivo a meno che la playlist non abbia già ID EPG perfettamente dedicati.</small>
             <Field labelKey="epg_url" label="EPG URL:" hintKey="epg_hint" hint="You can enter multiple EPG URLs separated by a comma (,)">
                 <input type="text" name="epg" value={props.c.epg} data-i18n-placeholder="epg_placeholder" placeholder="https://example.com/epg1.xml,https://example.com/epg2.xml" />
             </Field>
