@@ -29,6 +29,10 @@ Lo stack avvia tre servizi:
 
 Se non usi Cloudflare, togli il servizio `cloudflared` e decommenta `ports` nel servizio `addon`.
 
+Nei docker-compose il **generatore playlist e il resolver Python sono disattivati** (`PYTHON_ENABLED=false`):
+eseguono sul server codice scaricato da URL. Per attivarli metti `PYTHON_ENABLED=true` nel file `.env`;
+poi l'admin può comunque spegnerli dal pannello.
+
 ## 2. Primo accesso
 
 - Apri `PUBLIC_BASE_URL/admin`. Se non hai impostato `ADMIN_PASSWORD`, la password generata al primo avvio
@@ -133,7 +137,7 @@ Ogni URL EPG viene scaricato **una volta sola** e condiviso tra tutte le configu
 | `STREAM_TOKEN_TTL_HOURS` | `12` | validità dei link mascherati |
 | `ALLOW_LEGACY_URLS` | `true` | accetta i vecchi URL `/<base64>/manifest.json` |
 | `ALLOW_PRIVATE_URLS` | `false` | consente URL verso la rete locale (playlist/proxy in LAN) |
-| `PYTHON_ENABLED` | `true` | consente gli script Python (disattivabili anche dal pannello) |
+| `PYTHON_ENABLED` | `false` nei docker-compose, `true` altrimenti | generatore playlist e resolver Python (disattivabili anche dal pannello) |
 | `PYTHON_TIMEOUT_SEC` / `RESOLVER_TIMEOUT_SEC` | `180` / `30` | timeout degli script |
 | `TIMEZONE` | `Europe/Rome` | fuso orario degli orari EPG |
 | `EPG_REFRESH_HOURS` | `12` | intervallo di aggiornamento delle guide |

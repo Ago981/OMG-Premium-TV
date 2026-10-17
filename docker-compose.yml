@@ -15,6 +15,9 @@ services:
     environment:
       DATABASE_URL: postgres://omg:${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD in .env}@db:5432/omg
       DATA_DIR: /app/data
+      # Script Python (generatore playlist e resolver) disattivati: eseguono codice scaricato da URL
+      # sul server. Per attivarli metti PYTHON_ENABLED=true nel file .env
+      PYTHON_ENABLED: ${PYTHON_ENABLED:-false}
     volumes:
       - addon-data:/app/data
     depends_on:
