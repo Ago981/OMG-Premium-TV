@@ -6,7 +6,7 @@ import { closeDatabase, db, initDatabase } from '../src/db';
 import { env } from '../src/env';
 import { initAppSecret } from '../src/security/crypto';
 import { createConfig, deleteConfigs, getConfig, normalizeConfig, updateConfig, ConfigValidationError } from '../src/store/config-store';
-import { cleanTitle, stripTrailingYear, tmdbLanguage } from '../src/vod/tmdb';
+import { cleanTitle, stripTrailingYear, tmdbLanguage, tmdbMatch } from '../src/vod/tmdb';
 import { buildCategoryTree, parseExcluded, usedCategories } from '../src/vod/categories';
 import { getVodState, listVod, matchPending, syncLists } from '../src/vod/vod-service';
 import { vodCatalog, vodMeta, vodStreams } from '../src/vod/vod-addon';
@@ -72,7 +72,14 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
             if (u.pathname === '/search/tv') {
                 return json(res, { results: u.searchParams.get('query') === 'Breaking Bad' ? [{ id: 1396, name: 'Breaking Bad', first_air_date: '2008-01-20' }] : [] });
             }
-            if (u.pathname === '/search/movie') return json(res, { results: [{ id: 5, title: 'Un altro film' }] });
+            if (u.pathname === '/search/movie') {
+                const q = u.searchParams.get('query');
+                const year = u.searchParams.get('year');
+                if (q === 'Unico') return json(res, { results: year ? [] : [{ id: 777, title: 'Unico', release_date: '2001-05-01' }] });
+                if (q === 'Remake') return json(res, { results: year ? [] : [{ id: 801, title: 'Remake', release_date: '1984-01-01' }, { id: 802, title: 'Remake', release_date: '2021-01-01' }] });
+                return json(res, { results: [{ id: 5, title: 'Un altro film' }] });
+            }
+            if (u.pathname === '/movie/777') return json(res, { external_ids: { imdb_id: 'tt0000777' } });
             json(res, {}, 404);
         });
         await new Promise<void>(r => xtream.listen(0, '127.0.0.1', r));
@@ -121,6 +128,13 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.equal(stripTrailingYear('Doc - 2020'), 'Doc');
         assert.equal(stripTrailingYear('Blade Runner 2049'), 'Blade Runner 2049', 'not a plausible year');
         assert.equal(stripTrailingYear('1917'), '1917', 'a title made only of a year stays');
+    });
+
+    test('movies are retried without the year only when the title is unambiguous', async () => {
+        const unico = await tmdbMatch(KEY, 'movie', { tmdbId: null, name: 'Unico 1990', year: 1990 }, 'it-IT');
+        assert.equal(unico?.imdbId, 'tt0000777', 'a single film with that title is accepted despite the wrong year');
+        const remake = await tmdbMatch(KEY, 'movie', { tmdbId: null, name: 'Remake 1990', year: 1990 }, 'it-IT');
+        assert.equal(remake, null, 'two films with the same title and no matching year: no guess');
     });
 
     test('titles are cleaned before searching TMDB', () => {

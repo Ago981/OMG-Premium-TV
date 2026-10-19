@@ -122,8 +122,8 @@ async function searchTmdb(key: string, kind: VodKind, name: string, year: number
     const base = cleanTitle(name);
     const title = stripTrailingYear(base);
     if (title.length < 2) return null;
-    // Tentativi: titolo senza anno con l'anno come filtro, poi senza filtro (per le serie l'anno nel nome
-    // è spesso quello della stagione, non della prima messa in onda), infine il titolo così com'è
+    // Tentativi: titolo senza anno con l'anno come filtro, poi senza filtro (l'anno nel nome può essere
+    // sbagliato o, per le serie, quello della stagione), infine il titolo così com'è
     const attempts: [string, number | null][] = [[title, year]];
     if (year) attempts.push([title, null]);
     if (base !== title) attempts.push([base, null]);
@@ -132,14 +132,19 @@ async function searchTmdb(key: string, kind: VodKind, name: string, year: number
         if (filterYear) params[kind === 'movie' ? 'year' : 'first_air_date_year'] = String(filterYear);
         const data = await tmdbGet<{ results?: SearchResult[] }>(key, `/search/${kind === 'movie' ? 'movie' : 'tv'}`, params);
         const wanted = norm(query);
-        for (const r of data?.results || []) {
-            const names = [r.title, r.original_title, r.name, r.original_name].filter(Boolean).map(n => norm(n as string));
-            if (!names.includes(wanted)) continue;
+        const exact = (data?.results || []).filter(r =>
+            [r.title, r.original_title, r.name, r.original_name].filter(Boolean).map(n => norm(n as string)).includes(wanted));
+        const near = (r: SearchResult) => {
             const ry = yearOf(r.release_date, r.first_air_date);
-            // Senza filtro, per i film l'anno deve comunque tornare (±1); per le serie basta il titolo
-            if (year && ry && Math.abs(ry - year) > 1 && (filterYear || kind === 'movie')) continue;
-            return r.id;
-        }
+            return !year || !ry || Math.abs(ry - year) <= 1;
+        };
+        // Prima scelta: titolo identico con l'anno giusto (±1)
+        const best = exact.find(near);
+        if (best) return best.id;
+        if (filterYear || !exact.length) continue;
+        // Senza filtro e con l'anno che non torna (anno sbagliato nel nome o diverso su TMDB):
+        // per le serie basta il titolo; per i film solo se il titolo è di un unico film (niente remake)
+        if (kind === 'series' || exact.length === 1) return exact[0].id;
     }
     return null;
 }
