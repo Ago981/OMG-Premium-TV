@@ -9,6 +9,7 @@ import type { VodKind } from './tmdb';
 import { findByImdb, getVodItem, listVod, vodCategories, type VodItem } from './vod-service';
 import { isExcluded, leafOf, parseExcluded } from './categories';
 import { cleanTitle, stripTrailingYear } from './tmdb';
+import { placeholderUrl } from '../web/placeholder';
 
 /**
  * Cataloghi, schede e stream di film e serie Xtream.
@@ -18,8 +19,6 @@ import { cleanTitle, stripTrailingYear } from './tmdb';
  */
 
 export const MOVIE_PREFIX = 'xtm:';
-const PLACEHOLDER_MOVIE = '9e1b32';
-const PLACEHOLDER_SERIES = '0f6e7a';
 export const SERIES_PREFIX = 'xts:';
 const PAGE = 100;
 const INFO_TTL_MS = 30 * 60 * 1000;
@@ -151,10 +150,8 @@ function posterOf(item: VodItem): string {
     if (item.tmdbPoster) return item.tmdbPoster;
     if (item.poster && !item.posterBroken && /^https?:\/\//.test(item.poster)) return item.poster;
     if (item.imdbId) return `https://images.metahub.space/poster/medium/${item.imdbId}/img`;
-    const title = (displayTitle(item.name)).slice(0, 40);
-    // Colori del segnaposto: viola per i canali, rosso cinema per i film, blu petrolio per le serie
-    const color = item.kind === 'movie' ? PLACEHOLDER_MOVIE : PLACEHOLDER_SERIES;
-    return `https://dummyimage.com/342x513/${color}/ffffff.jpg&text=${encodeURIComponent(title).replace(/%20/g, '+')}`;
+    // Colori: viola i canali, rosso cinema i film, blu petrolio le serie
+    return placeholderUrl(item.kind, displayTitle(item.name));
 }
 
 function previewMeta(item: VodItem) {
@@ -191,7 +188,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
             meta: {
                 ...previewMeta(item),
                 id,
-                poster: item.tmdbPoster || (item.posterBroken ? null : item.poster) || info.movie_image || info.cover_big || posterOf(item),
+                poster: posterOf(item),
                 background: item.tmdbBackdrop || firstImage(info.backdrop_path) || info.cover_big || undefined,
                 description: info.plot || info.description,
                 cast: list(info.cast || info.actors),
@@ -226,7 +223,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
             meta: {
                 ...previewMeta(item),
                 id: `${SERIES_PREFIX}${seriesId}`,
-                poster: item.tmdbPoster || (item.posterBroken ? null : item.poster) || info.cover || posterOf(item),
+                poster: posterOf(item),
                 background: item.tmdbBackdrop || firstImage(info.backdrop_path) || undefined,
                 description: info.plot,
                 cast: list(info.cast),

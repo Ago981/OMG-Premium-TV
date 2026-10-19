@@ -7,6 +7,7 @@ import { getRuntime } from '../runtime';
 import { hasSource, vodEnabled, type ConfigRecord } from '../store/config-store';
 import type { Channel, StremioStream, UserConfig } from '../types';
 import { I18N } from '../web/i18n';
+import { placeholderUrl } from '../web/placeholder';
 import { buildStreams, maskUrl } from './streams';
 import { enqueueVod } from '../vod/vod-service';
 import { MOVIE_PREFIX, SERIES_PREFIX, vodCatalog, vodManifestCatalogs, vodMeta, vodStreams } from '../vod/vod-addon';
@@ -59,7 +60,7 @@ function cleanNameForImage(name: string): string {
 }
 
 function fallbackLogo(name: string): string {
-    return `https://dummyimage.com/500x500/590b8a/ffffff.jpg&text=${encodeURIComponent(cleanNameForImage(name)).replace(/%20/g, '+')}`;
+    return placeholderUrl('tv', cleanNameForImage(name));
 }
 
 function channelKey(ch: Channel): string {
