@@ -57,6 +57,8 @@ test('Xtream links reach the proxy with a player User-Agent', () => {
     assert.equal(ua('http://p.example/live/u/p/101.m3u8', { 'User-Agent': appConfig.defaultUserAgent }), env.xtreamUserAgent, 'default Chrome UA replaced');
     assert.equal(ua('http://p.example/live/u/p/101.ts', { 'User-Agent': 'TiviMate/4.7' }), 'TiviMate/4.7', 'a UA from the playlist is kept');
     assert.equal(ua('https://cdn.example/live/index.m3u8'), appConfig.defaultUserAgent, 'other links unchanged');
+    assert.equal(new URL(buildProxyUrl('easyproxy', 'http://p.example/movie/u/p/1.mp4', {}, cfg) as string).pathname, '/proxy/manifest.m3u8', 'Xtream .mp4 through the universal endpoint');
+    assert.equal(new URL(buildProxyUrl('easyproxy', 'https://cdn.example/film.mp4', {}, cfg) as string).pathname, '/proxy/stream', 'other .mp4 unchanged');
     const mf = new URL(buildProxyUrl('mediaflow', 'http://p.example/movie/u/p/1.mp4', {}, cfg) as string);
     assert.equal(mf.searchParams.get('h_user-agent'), env.xtreamUserAgent, 'MediaFlow too');
 });

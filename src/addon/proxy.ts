@@ -186,7 +186,9 @@ function mediaflowUrl(base: string, streamUrl: string, headers: StreamHeaders, c
 /** URL EasyProxy: endpoint universale con riconoscimento automatico; mp4 come stream diretto. */
 function easyproxyUrl(base: string, streamUrl: string, headers: StreamHeaders, cfg: UserConfig, clearkey?: string): string {
     const params = new URLSearchParams({ api_password: cfg.proxy_pwd });
-    if (streamUrl.endsWith('.mp4') && !clearkey) {
+    // I link Xtream usano sempre l'endpoint universale: con /proxy/stream alcuni pannelli danno
+    // "Bad status line" (errore 500 di EasyProxy) anche sui film .mp4
+    if (streamUrl.endsWith('.mp4') && !clearkey && !XTREAM_LINK_RE.test(streamUrl)) {
         params.set('d', streamUrl);
         headerParams(params, headers, streamUrl);
         return `${base}/proxy/stream?${params}`;
