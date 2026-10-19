@@ -26,7 +26,7 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ### 🚀 Versione 8.5.1 (Attuale)
 
-- **Canali uniti per errore**: alcune playlist (e alcuni pannelli Xtream) usano lo stesso `tvg-id` per canali diversi, ad esempio tutti i Sky con l'id di Sky Cinema Uno, e l'addon li mostrava come flussi di un unico canale. Ora le voci con lo stesso id vengono unite solo se sono lo stesso canale (es. «Sky Cinema Uno HD» e «FHD»); le altre diventano canali a sé, con la guida TV abbinata per nome. Chi usa un file di remapping può ancora unire canali diversi di proposito.
+- **Canali uniti per errore**: alcune playlist (e alcuni pannelli Xtream) usano lo stesso `tvg-id` per canali diversi, ad esempio tutti i Sky con l'id di Sky Cinema Uno, e l'addon li mostrava come flussi di un unico canale. Ora le voci con lo stesso id vengono unite solo se sono lo stesso canale (es. «Sky Cinema Uno SD», «HD», «FHD» o «4K», con il tag anche all'inizio del nome o tra parentesi); le altre diventano canali a sé, con la guida TV abbinata per nome. Chi usa un file di remapping può ancora unire canali diversi di proposito.
 
 ### 🚀 Versione 8.5.0
 

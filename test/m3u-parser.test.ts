@@ -63,6 +63,10 @@ test('loose key finds channels whose id or name changed slightly', () => {
     assert.equal(looseKey('vetrinaprimafilalive'), looseKey('Vetrina Primafila Live HD'));
     assert.equal(looseKey('rai1'), looseKey('rai1.it'));
     assert.notEqual(looseKey('rai1'), looseKey('rai2'));
+    for (const n of ['Sky Cinema Uno SD', 'Sky Cinema Uno (SD)', 'Sky Cinema Uno [SD]', 'Sky Cinema Uno SD+', 'SD Sky Cinema Uno', '[SD] Sky Cinema Uno', 'Sky Cinema Uno FHD']) {
+        assert.equal(looseKey(n), 'skycinemauno', n);
+    }
+    assert.equal(looseKey('4Kids TV'), '4kidstv', 'a tag glued to a word is not a tag');
 });
 
 test('runs of 3+ dashes around group and channel names are removed', () => {

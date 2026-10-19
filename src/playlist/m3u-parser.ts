@@ -25,7 +25,9 @@ export function stripDashes(value: string): string {
  * ("Vetrina Primafila Live" → "… HD", "rai1" → "rai1.it") e a capire se due voci sono lo stesso canale.
  */
 export function looseKey(value: unknown): string {
-    return normalizeId(value)
+    // Tag di qualità anche all'inizio del nome ("SD Sky Cinema Uno"), solo come parola a sé
+    const text = typeof value === 'string' ? value.replace(/^\s*[[(]?(fhd|uhd|hd|sd|4k)[\])]?\s+/i, '') : value;
+    return normalizeId(text)
         .replace(/\.[a-z]{2,3}$/, '')
         .replace(/[^a-z0-9]/g, '')
         .replace(/(fhd|uhd|hd|sd|4k|hevc|h265|backup)+$/, '');
