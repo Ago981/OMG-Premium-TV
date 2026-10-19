@@ -132,7 +132,6 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                     </div>
                     <div id="tmdbTestResult" className="small"></div>
                     {props.edit ? <div id="vodStatus" className="small muted"></div> : null}
-                    <small className="hint" data-i18n="vod_update_hint">Movies and series are updated together with the playlist: at the update interval and with the "Refresh M3U playlist" channel.</small>
                     <textarea name="vod_excluded" className="hidden">{props.c.vod_excluded}</textarea>
                     {props.edit ? (
                         <>
@@ -284,6 +283,11 @@ function AdvancedStep(props: { c: UserConfig; mode: 'new' | 'edit'; pythonAllowe
     const c = props.c;
     return (
         <Step index={3}>
+            <div className="xtream-only">
+                <Field labelKey="xtream_account" label="Xtream account">
+                    <div id="xtreamAccountInfo" className="account-info small muted"></div>
+                </Field>
+            </div>
             <Check name="aio_compatible" checked={c.aio_compatible} labelKey="aio_compatible" label="AIOStreams compatible mode" />
             <small className="hint" data-i18n="aio_compatible_hint">Appends country code [e.g. ITA] to channel and stream names for AIOStreams detection.</small>
             <Field labelKey="update_interval" label="Playlist update interval:" hintKey="update_interval_hint" hint="Format HH:MM (e.g. 1:00 or 01:00), default 12:00">

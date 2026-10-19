@@ -24,7 +24,7 @@ import {
 } from '../store/config-store';
 import type { UserConfig } from '../types';
 import { checkProxy, proxyLabel } from '../addon/proxy';
-import { getAccount, parseXtreamInput, XtreamAuthError } from '../playlist/xtream';
+import { credentialsOf, getAccount, parseXtreamInput, XtreamAuthError } from '../playlist/xtream';
 import { checkTmdbKey, TmdbAuthError } from '../vod/tmdb';
 import { categoryCounts, clearVod, enqueueVod, getVodState, resetMatches } from '../vod/vod-service';
 import { SEP } from '../vod/categories';
@@ -258,6 +258,19 @@ api.post('/tmdb-test', wrap(async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         fail(res, e instanceof TmdbAuthError ? 401 : 502, e instanceof TmdbAuthError ? 'tmdb_key_invalid' : logger.errMsg(e));
+    }
+}));
+
+/** Abbonamento Xtream della configurazione (stato, scadenza, connessioni) con le credenziali salvate. */
+api.get('/configs/:id/xtream-account', wrap(async (req, res) => {
+    const record = await authorizedConfig(req);
+    if (!record) return fail(res, 401, 'unauthorized');
+    if (record.config.source_type !== 'xtream' || !hasSource(record.config)) return fail(res, 400, 'xtream_credentials_required');
+    try {
+        const { status, ...rest } = await getAccount(credentialsOf(record.config));
+        res.json({ success: true, accountStatus: status, ...rest });
+    } catch (e) {
+        fail(res, e instanceof XtreamAuthError ? 401 : 502, e instanceof XtreamAuthError ? 'xtream_auth_failed' : logger.errMsg(e));
     }
 }));
 

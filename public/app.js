@@ -351,6 +351,10 @@
             $('[data-action="next"]').style.display = last ? 'none' : '';
             $('.submit-btn').style.display = last || mode === 'edit' ? '' : 'none';
             if (steps[current].getAttribute('data-step') === 'confirm') renderSummary();
+            // Nuova configurazione Xtream: in Avanzate si mostra la scadenza (verifica automatica se non già fatta)
+            var acc = $('#xtreamAccountInfo');
+            if (mode === 'new' && acc && !acc.textContent && steps[current].getAttribute('data-step') === 'advanced' &&
+                sourceType() === 'xtream' && form.xtream_server.value.trim()) actions['xtream-test']();
             clearError($('#configError'));
         }
 
@@ -387,6 +391,30 @@
         });
         showStep(0);
 
+        /** Abbonamento Xtream nel riquadro di Avanzate: stato, scadenza (giorni mancanti) e connessioni. */
+        function showAccount(d) {
+            var box = $('#xtreamAccountInfo');
+            if (!box) return;
+            if (!d.success) {
+                box.textContent = '❌ ' + errorText(d.message);
+                box.className = 'account-info small error-text';
+                return;
+            }
+            var parts = [t('xtream_status') + ': ' + d.accountStatus];
+            var warn = String(d.accountStatus).toLowerCase() !== 'active';
+            if (d.expDate) {
+                var days = Math.ceil((d.expDate - Date.now()) / 86400000);
+                parts.push(t('xtream_expires') + ' ' + new Date(d.expDate).toLocaleDateString(lang) + ' (' + t('xtream_days_left').replace('{n}', Math.max(0, days)) + ')');
+                if (days <= 15) warn = true;
+            } else {
+                parts.push(t('xtream_expires') + ': ' + t('xtream_never'));
+            }
+            if (d.maxConnections !== null) parts.push(t('xtream_connections') + ': ' + (d.activeConnections || 0) + '/' + d.maxConnections);
+            if (d.isTrial) parts.push('trial');
+            box.textContent = (warn ? '⚠️ ' : '✅ ') + parts.join(' · ');
+            box.className = 'account-info small ' + (warn ? 'error-text' : 'ok-text');
+        }
+
         var vodTimer = null;
         var vodCatsLoaded = false;
         var actions = {
@@ -416,6 +444,7 @@
                     if (d.isTrial) parts.push('trial');
                     out.textContent = parts.join(' · ');
                     out.className = 'small ok-text';
+                    showAccount(d);
                 });
             },
             'tmdb-test': function () {
@@ -428,18 +457,15 @@
                 });
             },
             'vod-status': function () {
+                // Stato tecnico non mostrato: serve per l'avviso di installazione, le categorie e gli errori (es. chiave TMDB)
                 var out = $('#vodStatus');
-                if (!out) return;
                 api('GET', '/api/configs/' + form.getAttribute('data-id') + '/vod').then(function (d) {
-                    if (!d.success || !d.enabled) { out.textContent = ''; return; }
+                    if (!d.success || !d.enabled) { if (out) out.textContent = ''; return; }
                     var busy = ['queued', 'syncing', 'matching'].indexOf(d.vodStatus) >= 0;
-                    var parts = [t('vod_status_label') + ': ' + t('vod_status_' + d.vodStatus)];
-                    parts.push(t('vod_movies') + ': ' + d.movies, t('vod_series') + ': ' + d.series);
-                    parts.push(t('vod_matched') + ': ' + d.matched + ' / ' + (d.matched + d.unmatched + d.pending));
-                    if (d.updatedAt) parts.push(t('vod_updated') + ' ' + new Date(d.updatedAt).toLocaleString(lang));
-                    if (d.vodStatus === 'error' && d.lastError) parts.push(errorText(d.lastError));
-                    out.textContent = parts.join(' · ');
-                    out.className = d.vodStatus === 'error' ? 'small error-text' : 'small muted';
+                    if (out) {
+                        out.textContent = d.vodStatus === 'error' && d.lastError ? '❌ ' + errorText(d.lastError) : '';
+                        out.className = 'small error-text';
+                    }
                     var note = $('#vodInstallNote');
                     if (note) note.classList.toggle('hidden', !busy && d.vodStatus !== 'idle');
                     if (busy) vodCatsLoaded = false;
@@ -447,6 +473,10 @@
                     clearTimeout(vodTimer);
                     if (busy) vodTimer = setTimeout(actions['vod-status'], 4000);
                 });
+            },
+            'xtream-account': function () {
+                if (!$('#xtreamAccountInfo') || sourceType() !== 'xtream') return;
+                api('GET', '/api/configs/' + form.getAttribute('data-id') + '/xtream-account').then(showAccount);
             },
             'vod-categories': function () {
                 var box = $('#vodCategories');
@@ -759,7 +789,8 @@
         if (mode === 'edit') {
             if ($('#pythonStatus') && form.elements.python_script_url && form.elements.python_script_url.value) actions['python-status']();
             if ($('#resolverStatus') && form.elements.resolver_script && form.elements.resolver_script.value) actions['resolver-status']();
-            if ($('#vodStatus') && form.elements.xtream_vod && form.elements.xtream_vod.checked) {
+            actions['xtream-account']();
+            if (form.elements.xtream_vod && form.elements.xtream_vod.checked) {
                 actions['vod-status']();
                 document.addEventListener('omg:language', actions['vod-status']);
             }

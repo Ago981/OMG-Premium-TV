@@ -1,6 +1,8 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        xtream_account: "Xtream account",
+        xtream_days_left: "{n} days left",
         proxy_type_off: "Disabled",
         proxy_off_hint: "Proxy disabled: streams are opened directly by your device. URL and password stay saved for when you turn it back on.",
         epg_xtream_hint: "Leave empty to use the TV guide provided by the Xtream configuration.",
@@ -181,6 +183,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        xtream_account: "Account Xtream",
+        xtream_days_left: "mancano {n} giorni",
         proxy_type_off: "Disattivato",
         proxy_off_hint: "Proxy disattivato: gli stream vengono aperti direttamente dal tuo dispositivo. URL e password restano salvati per quando lo riattivi.",
         epg_xtream_hint: "Lascia vuoto per usare la guida TV prevista dalla configurazione Xtream.",
@@ -361,6 +365,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        xtream_account: "Cuenta Xtream",
+        xtream_days_left: "quedan {n} días",
         proxy_type_off: "Desactivado",
         proxy_off_hint: "Proxy desactivado: los streams los abre directamente tu dispositivo. URL y contraseña quedan guardadas para cuando lo reactives.",
         epg_xtream_hint: "Déjalo vacío para usar la guía de TV prevista por la configuración Xtream.",
@@ -489,6 +495,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        xtream_account: "Compte Xtream",
+        xtream_days_left: "{n} jours restants",
         proxy_type_off: "Désactivé",
         proxy_off_hint: "Proxy désactivé : les flux sont ouverts directement par votre appareil. L'URL et le mot de passe restent enregistrés pour quand vous le réactiverez.",
         epg_xtream_hint: "Laissez vide pour utiliser le guide TV prévu par la configuration Xtream.",
