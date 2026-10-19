@@ -57,7 +57,7 @@ export function buildCategoryTree(cats: CategoryRaw[]): CategoryTree {
             path = `${pathOf(parent, depth + 1)}${SEP}${name}`;
         } else if (!hasParents) {
             const m = name.match(PREFIX_RE);
-            if (m && (prefixCount.get(m[1]) || 0) >= 2) path = `${m[1]}${SEP}${m[2]}`;
+            if (m && (prefixCount.get(m[1]) || 0) >= 2) path = `${stripDashes(m[1])}${SEP}${stripDashes(m[2])}`;
         }
         pathById.set(id, path);
         return path;
@@ -113,5 +113,7 @@ export function isExcluded(path: string, excluded: string[]): boolean {
 
 /** "a\nb" (campo della configurazione) → elenco pulito. */
 export function parseExcluded(value: string): string[] {
-    return [...new Set(String(value || '').split('\n').map(s => s.trim()).filter(Boolean))].slice(0, 500);
+    // Anche i nomi salvati prima della normalizzazione dei trattini ("-----DOCUMENTARI-----")
+    const paths = String(value || '').split('\n').map(s => s.split(SEP).map(stripDashes).join(SEP).trim()).filter(Boolean);
+    return [...new Set(paths)].slice(0, 500);
 }

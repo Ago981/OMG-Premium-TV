@@ -138,7 +138,13 @@ const SCHEMA_V3 = `
     UPDATE vod_items SET match_state = 0 WHERE match_state IN (1, 2);
 `;
 
-const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3];
+/** Nomi normalizzati (trattini): playlist e film/serie vengono riscaricati al prossimo avvio. */
+const SCHEMA_V4 = `
+    UPDATE playlists SET updated_at = 0 WHERE data IS NOT NULL;
+    UPDATE vod_state SET status = 'pending';
+`;
+
+const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4];
 
 function splitStatements(sql: string): string[] {
     return sql

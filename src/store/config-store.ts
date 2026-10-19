@@ -36,7 +36,7 @@ export const DEFAULT_CONFIG: UserConfig = {
     tmdb_api_key: '',
     vod_excluded: '',
     epg: '',
-    epg_enabled: false,
+    epg_enabled: true,
     smart_epg: true,
     language: 'Italiano',
     proxy: '',

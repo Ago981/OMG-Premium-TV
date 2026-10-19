@@ -82,6 +82,14 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                     <button type="button" className="ok" data-action="use-country-playlist" data-i18n="use_country_playlist">Use the country playlist</button>
                 </div>
             </Field>
+            <Field labelKey="channel_language" label="Language" hintKey="channel_language_hint" hint="Channel and stream language (AIOStreams) and language of movie and series titles and posters (TMDB).">
+                <select name="language">
+                    {LANGUAGES.map(l => <option value={l} selected={(props.c.language || 'Italiano') === l}>{l}</option>)}
+                </select>
+            </Field>
+            <Field labelKey="config_label" label="Name (optional)" hintKey="config_label_hint" hint="Only for you: shown in the addon name.">
+                <input type="text" name="label" maxlength={80} value={props.label || ''} />
+            </Field>
             <div className="source-switch" role="radiogroup">
                 <label className="check"><input type="radio" name="source_type" value="m3u" checked={props.c.source_type !== 'xtream'} /> <span data-i18n="source_m3u">M3U playlist</span></label>
                 <label className="check"><input type="radio" name="source_type" value="xtream" checked={props.c.source_type === 'xtream'} /> <span data-i18n="source_xtream">Xtream Codes account</span></label>
@@ -138,9 +146,6 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                     )}
                 </div>
             </div>
-            <Field labelKey="config_label" label="Name (optional)" hintKey="config_label_hint" hint="Only for you: shown in the addon name.">
-                <input type="text" name="label" maxlength={80} value={props.label || ''} />
-            </Field>
         </Step>
     );
 }
@@ -153,6 +158,7 @@ function EpgStep(props: { c: UserConfig }) {
             <small className="hint" data-i18n="smart_epg_hint">Matches EPG permissively (ignores HD/SD/4K quality tags, channel numbers, and matches on name). Recommended to leave enabled unless your playlist already has strictly dedicated EPG IDs.</small>
             <Field labelKey="epg_url" label="EPG URL:" hintKey="epg_hint" hint="You can enter multiple EPG URLs separated by a comma (,)">
                 <input type="text" name="epg" value={props.c.epg} data-i18n-placeholder="epg_placeholder" placeholder="https://example.com/epg1.xml,https://example.com/epg2.xml" />
+                <small className="hint xtream-only" data-i18n="epg_xtream_hint">Leave empty to use the TV guide provided by the Xtream configuration.</small>
             </Field>
             <div className="preset-box">
                 <h3 data-i18n="epg_presets">Preset TV guides</h3>
@@ -276,11 +282,6 @@ function AdvancedStep(props: { c: UserConfig; mode: 'new' | 'edit'; pythonAllowe
         <Step index={3}>
             <Check name="aio_compatible" checked={c.aio_compatible} labelKey="aio_compatible" label="AIOStreams compatible mode" />
             <small className="hint" data-i18n="aio_compatible_hint">Appends country code [e.g. ITA] to channel and stream names for AIOStreams detection.</small>
-            <Field labelKey="channel_language" label="Channel language:" hintKey="channel_language_hint" hint="Only used for compatibility with AIOStreams.">
-                <select name="language">
-                    {LANGUAGES.map(l => <option value={l} selected={(c.language || 'Italiano') === l}>{l}</option>)}
-                </select>
-            </Field>
             <Field labelKey="update_interval" label="Playlist update interval:" hintKey="update_interval_hint" hint="Format HH:MM (e.g. 1:00 or 01:00), default 12:00">
                 <input type="text" name="update_interval" value={c.update_interval || '12:00'} placeholder="HH:MM (default 12:00)" />
             </Field>

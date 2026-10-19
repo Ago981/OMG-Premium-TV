@@ -7,7 +7,7 @@ import { env } from '../src/env';
 import { initAppSecret } from '../src/security/crypto';
 import { createConfig, deleteConfigs, getConfig, normalizeConfig, updateConfig, ConfigValidationError } from '../src/store/config-store';
 import { cleanTitle, tmdbLanguage } from '../src/vod/tmdb';
-import { buildCategoryTree, usedCategories } from '../src/vod/categories';
+import { buildCategoryTree, parseExcluded, usedCategories } from '../src/vod/categories';
 import { getVodState, listVod, matchPending, syncLists } from '../src/vod/vod-service';
 import { vodCatalog, vodMeta, vodStreams } from '../src/vod/vod-addon';
 import { catalogHandler, manifestHandler, streamHandler } from '../src/addon/handlers';
@@ -136,6 +136,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.equal(byPrefix.pathById.get('2'), 'IT › Commedia');
         assert.equal(byPrefix.pathById.get('3'), 'EN | Drama', 'a prefix used once is not a group');
         assert.equal(buildCategoryTree([{ category_id: 9, category_name: '-----DOCUMENTARI-----' }]).pathById.get('9'), 'DOCUMENTARI');
+        assert.deepEqual(parseExcluded('-----DOCUMENTARI-----\nIT › ---AZIONE---'), ['DOCUMENTARI', 'IT › AZIONE'], 'old saved names are normalized too');
         assert.deepEqual(usedCategories(byPrefix.order, new Set(['IT › Commedia'])), ['IT', 'IT › Commedia']);
     });
 

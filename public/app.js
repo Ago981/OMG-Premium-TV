@@ -308,6 +308,7 @@
                     el.required = on;
                 });
             });
+            form.querySelectorAll('.xtream-only').forEach(function (el) { el.classList.toggle('hidden', type !== 'xtream'); });
             // Film e serie: la chiave TMDB è obbligatoria solo se l'opzione è attiva
             var vod = form.elements.xtream_vod;
             if (vod) {
