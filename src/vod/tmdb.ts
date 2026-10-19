@@ -125,23 +125,47 @@ async function searchTmdb(key: string, kind: VodKind, name: string, year: number
     return null;
 }
 
+export interface TmdbMatch {
+    imdbId: string | null;
+    /** URL completi delle immagini (copertina verticale e sfondo). */
+    poster: string | null;
+    backdrop: string | null;
+}
+
+const IMAGE_BASE = 'https://image.tmdb.org/t/p';
+
+interface Details {
+    poster_path?: string | null;
+    backdrop_path?: string | null;
+    external_ids?: { imdb_id?: string | null };
+}
+
+/** Scheda TMDB con ID esterni nella stessa richiesta: ID IMDb, copertina e sfondo (nella lingua dell'utente). */
+async function details(key: string, kind: VodKind, tmdbId: number, language: string): Promise<TmdbMatch | null> {
+    const d = await tmdbGet<Details>(key, `/${kind === 'movie' ? 'movie' : 'tv'}/${tmdbId}`, {
+        append_to_response: 'external_ids', language
+    });
+    if (!d) return null;
+    const imdb = d.external_ids?.imdb_id;
+    return {
+        imdbId: imdb && /^tt\d+$/.test(imdb) ? imdb : null,
+        poster: d.poster_path ? `${IMAGE_BASE}/w342${d.poster_path}` : null,
+        backdrop: d.backdrop_path ? `${IMAGE_BASE}/w1280${d.backdrop_path}` : null
+    };
+}
+
 /**
- * ID IMDb di un titolo: dal tmdb_id fornito dal pannello se c'è (1 richiesta),
- * altrimenti dalla ricerca per titolo e anno (2 richieste). null se non trovato.
+ * ID IMDb e immagini di un titolo: dal tmdb_id fornito dal pannello se c'è (1 richiesta),
+ * altrimenti dalla ricerca per titolo e anno (2 richieste). null se il titolo non si trova.
  */
-export async function imdbIdFor(key: string, kind: VodKind, item: { tmdbId: string | null; name: string; year: number | null }, language: string): Promise<string | null> {
-    const path = kind === 'movie' ? 'movie' : 'tv';
-    let tmdbId: number | null = item.tmdbId && /^\d+$/.test(item.tmdbId) ? Number(item.tmdbId) : null;
-    if (tmdbId) {
-        const ext = await tmdbGet<{ imdb_id?: string | null }>(key, `/${path}/${tmdbId}/external_ids`);
-        if (ext?.imdb_id && /^tt\d+$/.test(ext.imdb_id)) return ext.imdb_id;
-        if (ext) return null;
-        tmdbId = null; // tmdb_id sbagliato (404): si prova con il titolo
+export async function tmdbMatch(key: string, kind: VodKind, item: { tmdbId: string | null; name: string; year: number | null }, language: string): Promise<TmdbMatch | null> {
+    if (item.tmdbId && /^\d+$/.test(item.tmdbId)) {
+        const byId = await details(key, kind, Number(item.tmdbId), language);
+        if (byId) return byId;
+        // tmdb_id sbagliato (404): si prova con il titolo
     }
-    tmdbId = await searchTmdb(key, kind, item.name, item.year, language);
-    if (!tmdbId) return null;
-    const ext = await tmdbGet<{ imdb_id?: string | null }>(key, `/${path}/${tmdbId}/external_ids`);
-    return ext?.imdb_id && /^tt\d+$/.test(ext.imdb_id) ? ext.imdb_id : null;
+    const found = await searchTmdb(key, kind, item.name, item.year, language);
+    return found ? details(key, kind, found, language) : null;
 }
 
 /** "Italiano" → "it-IT" per i titoli della ricerca TMDB. */

@@ -133,13 +133,26 @@ export async function vodManifestCatalogs(record: ConfigRecord, catalogId: strin
     ];
 }
 
+/**
+ * Copertina: TMDB (nella lingua dell'utente), poi quella del provider, poi quella pubblica di Stremio
+ * per l'ID IMDb; senza nessuna, un segnaposto con il titolo (come per i canali).
+ */
+function posterOf(item: VodItem): string {
+    if (item.tmdbPoster) return item.tmdbPoster;
+    if (item.poster && /^https?:\/\//.test(item.poster)) return item.poster;
+    if (item.imdbId) return `https://images.metahub.space/poster/medium/${item.imdbId}/img`;
+    const title = (cleanTitle(item.name) || item.name).slice(0, 40);
+    return `https://dummyimage.com/342x513/590b8a/ffffff.jpg&text=${encodeURIComponent(title).replace(/%20/g, '+')}`;
+}
+
 function previewMeta(item: VodItem) {
     const prefix = item.kind === 'movie' ? MOVIE_PREFIX : SERIES_PREFIX;
     return {
         id: item.imdbId || `${prefix}${item.itemId}`,
         type: item.kind,
         name: cleanTitle(item.name) || item.name,
-        poster: item.poster || undefined,
+        poster: posterOf(item),
+        background: item.tmdbBackdrop || undefined,
         posterShape: 'poster',
         releaseInfo: item.year ? String(item.year) : undefined,
         imdbRating: item.rating || undefined,
@@ -166,8 +179,8 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
             meta: {
                 ...previewMeta(item),
                 id,
-                poster: item.poster || info.movie_image || info.cover_big,
-                background: firstImage(info.backdrop_path) || info.cover_big || item.poster || undefined,
+                poster: item.tmdbPoster || item.poster || info.movie_image || info.cover_big || posterOf(item),
+                background: item.tmdbBackdrop || firstImage(info.backdrop_path) || info.cover_big || undefined,
                 description: info.plot || info.description,
                 cast: list(info.cast || info.actors),
                 director: list(info.director),
@@ -201,8 +214,8 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
             meta: {
                 ...previewMeta(item),
                 id: `${SERIES_PREFIX}${seriesId}`,
-                poster: item.poster || info.cover,
-                background: firstImage(info.backdrop_path) || item.poster || undefined,
+                poster: item.tmdbPoster || item.poster || info.cover || posterOf(item),
+                background: item.tmdbBackdrop || firstImage(info.backdrop_path) || undefined,
                 description: info.plot,
                 cast: list(info.cast),
                 director: list(info.director),

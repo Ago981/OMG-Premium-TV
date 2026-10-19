@@ -131,7 +131,14 @@ const SCHEMA_V2 = `
     );
 `;
 
-const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2];
+/** Copertine e sfondi TMDB di film e serie; i titoli già abbinati vengono riletti una volta per averli. */
+const SCHEMA_V3 = `
+    ALTER TABLE vod_items ADD COLUMN IF NOT EXISTS tmdb_poster TEXT;
+    ALTER TABLE vod_items ADD COLUMN IF NOT EXISTS tmdb_backdrop TEXT;
+    UPDATE vod_items SET match_state = 0 WHERE match_state IN (1, 2);
+`;
+
+const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3];
 
 function splitStatements(sql: string): string[] {
     return sql

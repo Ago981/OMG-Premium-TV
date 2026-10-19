@@ -208,6 +208,9 @@ themoviedb.org → Impostazioni → API; va bene la chiave v3 o il Read Access T
   collegati usano l'ID IMDb, quindi in Stremio si apre la scheda ufficiale e lo stream compare anche
   aprendo il film o l'episodio dalle pagine di Stremio (Cinemeta). Gli altri restano visibili nei
   cataloghi dell'addon con la scheda del provider.
+- Nella stessa richiesta TMDB arrivano anche **copertina e sfondo** (nella lingua della configurazione):
+  hanno la precedenza su quelli del provider, spesso mancanti. Senza TMDB si usa la copertina del
+  provider, poi quella pubblica di Stremio per l'ID IMDb, infine un segnaposto con il titolo.
 - Gli abbinamenti sono salvati **per utente**, non in una cache condivisa: ogni configurazione usa la
   propria chiave e la propria quota TMDB, e cancellando la configurazione si cancellano anche i suoi titoli.
   Ai refresh successivi si convertono solo i titoli nuovi; la prima volta, con circa 35 richieste al

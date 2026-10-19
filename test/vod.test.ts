@@ -62,8 +62,8 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
             const u = new URL(req.url || '/', 'http://x');
             if (u.searchParams.get('api_key') !== KEY) return json(res, { status_message: 'Invalid API key' }, 401);
             if (u.pathname === '/configuration') return json(res, { images: {} });
-            if (u.pathname === '/movie/238/external_ids') return json(res, { imdb_id: 'tt0068646' });
-            if (u.pathname === '/tv/1396/external_ids') return json(res, { imdb_id: 'tt0903747' });
+            if (u.pathname === '/movie/238') return json(res, { poster_path: '/padrino.jpg', backdrop_path: '/bg.jpg', external_ids: { imdb_id: 'tt0068646' } });
+            if (u.pathname === '/tv/1396') return json(res, { poster_path: null, external_ids: { imdb_id: 'tt0903747' } });
             if (u.pathname === '/search/tv') {
                 return json(res, { results: u.searchParams.get('query') === 'Breaking Bad' ? [{ id: 1396, name: 'Breaking Bad', first_air_date: '2008-01-20' }] : [] });
             }
@@ -151,6 +151,11 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         const { metas } = await vodCatalog(ctx, 'movie', {}) as { metas: { id: string; name: string }[] };
         assert.deepEqual(metas.map(m => m.id), ['tt0068646', 'xtm:13'], 'newest first, the 4K copy merged under the same IMDb id');
         assert.equal(metas[0].name, 'Il Padrino', 'provider prefixes and year removed from the shown title');
+        const posters = (metas as unknown as { poster: string }[]).map(m => m.poster);
+        assert.equal(posters[0], 'https://image.tmdb.org/t/p/w342/padrino.jpg', 'TMDB poster first');
+        assert.match(posters[1], /^https:\/\/dummyimage\.com\/.*Film\+Sconosciuto/, 'placeholder when no poster exists');
+        const series = await vodCatalog(ctx, 'series', {}) as { metas: { poster: string }[] };
+        assert.equal(series.metas[0].poster, 'https://img/bb.jpg', 'provider cover when TMDB has none');
         // Pagine da un titolo: lo skip di Stremio conta i titoli unici, non le righe
         const page2 = await listVod(record.id, 'movie', { skip: 1, limit: 1 });
         assert.deepEqual(page2.map(i => i.itemId), ['13']);

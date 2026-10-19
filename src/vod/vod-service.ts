@@ -7,7 +7,7 @@ import { getConfig, listActiveConfigs, vodEnabled, type ConfigRecord } from '../
 import type { UserConfig } from '../types';
 import { stripDashes } from '../playlist/m3u-parser';
 import { buildCategoryTree, categoryMatch, excludeCategories, usedCategories, type CategoryRaw } from './categories';
-import { imdbIdFor, TmdbAuthError, tmdbLanguage, yearOf, type VodKind } from './tmdb';
+import { tmdbMatch, TmdbAuthError, tmdbLanguage, yearOf, type VodKind } from './tmdb';
 
 /**
  * Film e serie TV di un account Xtream.
@@ -28,6 +28,8 @@ export interface VodItem {
     category: string | null;
     ext: string | null;
     imdbId: string | null;
+    tmdbPoster: string | null;
+    tmdbBackdrop: string | null;
 }
 
 export interface VodState {
@@ -106,7 +108,7 @@ function toRow(configId: string, kind: VodKind, raw: ListRaw, catName: Map<strin
         added ? added * 1000 : null,
         tmdb && /^\d+$/.test(tmdb) ? tmdb : null,
         imdb,
-        imdb ? 1 : 0,
+        0,
         stamp
     ];
 }
@@ -127,7 +129,9 @@ function upsertStatements(rows: Param[][]): Statement[] {
                     rating = excluded.rating, category = excluded.category, ext = excluded.ext, added = excluded.added,
                     seen_at = excluded.seen_at,
                     imdb_id = COALESCE(excluded.imdb_id, CASE WHEN ${same} THEN vod_items.imdb_id ELSE NULL END),
-                    match_state = CASE WHEN excluded.imdb_id IS NOT NULL THEN 1 WHEN ${same} THEN vod_items.match_state ELSE 0 END,
+                    match_state = CASE WHEN ${same} THEN vod_items.match_state ELSE 0 END,
+                    tmdb_poster = CASE WHEN ${same} THEN vod_items.tmdb_poster ELSE NULL END,
+                    tmdb_backdrop = CASE WHEN ${same} THEN vod_items.tmdb_backdrop ELSE NULL END,
                     tmdb_id = excluded.tmdb_id`,
             params: chunk.flat()
         });
@@ -291,24 +295,27 @@ export async function matchPending(record: ConfigRecord, concurrency = 6): Promi
             `SELECT kind, item_id, name, year, tmdb_id FROM vod_items WHERE config_id = ? AND match_state = 0
              ORDER BY added DESC NULLS LAST LIMIT 120`, [record.id]);
         if (!rows.length) return done;
-        const results: { row: PendingRow; imdb: string | null }[] = [];
+        const results: { row: PendingRow; match: Awaited<ReturnType<typeof tmdbMatch>> }[] = [];
         let next = 0;
         let failed = false;
         await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, async () => {
             while (next < rows.length && !failed) {
                 const row = rows[next++];
                 try {
-                    const imdb = await imdbIdFor(cfg.tmdb_api_key, row.kind, { tmdbId: row.tmdb_id, name: row.name, year: row.year }, language);
-                    results.push({ row, imdb });
+                    const match = await tmdbMatch(cfg.tmdb_api_key, row.kind, { tmdbId: row.tmdb_id, name: row.name, year: row.year }, language);
+                    results.push({ row, match });
                 } catch (e) {
                     failed = true; // chiave non valida o TMDB irraggiungibile: si ferma tutto e si riprova più tardi
                     throw e;
                 }
             }
         }));
+        // L'ID IMDb fornito dal pannello resta se TMDB non ne trova uno
         await db().batch(results.map(r => ({
-            sql: 'UPDATE vod_items SET imdb_id = ?, match_state = ? WHERE config_id = ? AND kind = ? AND item_id = ?',
-            params: [r.imdb, r.imdb ? 1 : 2, record.id, r.row.kind, r.row.item_id]
+            sql: `UPDATE vod_items SET imdb_id = COALESCE(?, imdb_id), tmdb_poster = ?, tmdb_backdrop = ?,
+                    match_state = CASE WHEN COALESCE(?, imdb_id) IS NOT NULL THEN 1 ELSE 2 END
+                  WHERE config_id = ? AND kind = ? AND item_id = ?`,
+            params: [r.match?.imdbId ?? null, r.match?.poster ?? null, r.match?.backdrop ?? null, r.match?.imdbId ?? null, record.id, r.row.kind, r.row.item_id]
         })));
         done += results.length;
     }
@@ -389,13 +396,15 @@ interface ItemRow {
     category: string | null;
     ext: string | null;
     imdb_id: string | null;
+    tmdb_poster: string | null;
+    tmdb_backdrop: string | null;
 }
 
 function fromItemRow(r: ItemRow): VodItem {
-    return { kind: r.kind, itemId: r.item_id, name: r.name, poster: r.poster, year: r.year, rating: r.rating, category: r.category, ext: r.ext, imdbId: r.imdb_id };
+    return { kind: r.kind, itemId: r.item_id, name: r.name, poster: r.poster, year: r.year, rating: r.rating, category: r.category, ext: r.ext, imdbId: r.imdb_id, tmdbPoster: r.tmdb_poster, tmdbBackdrop: r.tmdb_backdrop };
 }
 
-const ITEM_COLUMNS = 'kind, item_id, name, poster, year, rating, category, ext, imdb_id';
+const ITEM_COLUMNS = 'kind, item_id, name, poster, year, rating, category, ext, imdb_id, tmdb_poster, tmdb_backdrop';
 
 /** Filtro comune: configurazione, tipo e categorie escluse dall'utente. */
 function baseWhere(configId: string, kind: VodKind, excluded: string[]): { where: string[]; params: Param[] } {
