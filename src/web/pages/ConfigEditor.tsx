@@ -81,10 +81,38 @@ function SourceStep(props: { c: UserConfig; label?: string }) {
                     <button type="button" className="ok" data-action="use-country-playlist" data-i18n="use_country_playlist">Use the country playlist</button>
                 </div>
             </Field>
-            <Field labelKey="m3u_url" label="M3U URL:" hintKey="m3u_hint" hint="You can enter multiple M3U URLs separated by a comma (,)">
-                <input type="text" name="m3u" required readonly={locked} value={locked ? LOCKED_M3U : props.c.m3u}
-                    data-i18n-placeholder="m3u_placeholder" placeholder="https://example.com/playlist1.m3u,https://example.com/playlist2.m3u" />
-            </Field>
+            <div className="source-switch" role="radiogroup">
+                <label className="check"><input type="radio" name="source_type" value="m3u" checked={props.c.source_type !== 'xtream'} /> <span data-i18n="source_m3u">M3U playlist</span></label>
+                <label className="check"><input type="radio" name="source_type" value="xtream" checked={props.c.source_type === 'xtream'} /> <span data-i18n="source_xtream">Xtream Codes account</span></label>
+            </div>
+            <div className="source-panel" data-source="m3u">
+                <Field labelKey="m3u_url" label="M3U URL:" hintKey="m3u_hint" hint="You can enter multiple M3U URLs separated by a comma (,)">
+                    <input type="text" name="m3u" required readonly={locked} value={locked ? LOCKED_M3U : props.c.m3u}
+                        data-i18n-placeholder="m3u_placeholder" placeholder="https://example.com/playlist1.m3u,https://example.com/playlist2.m3u" />
+                </Field>
+            </div>
+            <div className="source-panel" data-source="xtream">
+                <Field labelKey="xtream_server" label="Server" hintKey="xtream_server_hint" hint="e.g. http://provider.example:8080 — you can also paste the full get.php link, username and password are read from it.">
+                    <input type="text" name="xtream_server" value={props.c.xtream_server} placeholder="http://provider.example:8080" autocomplete="off" />
+                </Field>
+                <Field labelKey="xtream_username" label="Username">
+                    <input type="text" name="xtream_username" value={props.c.xtream_username} autocomplete="off" />
+                </Field>
+                <Field labelKey="xtream_password" label="Password">
+                    <input type="password" name="xtream_password" value={props.c.xtream_password} autocomplete="off" />
+                </Field>
+                <Field labelKey="xtream_format" label="Stream format" hintKey="xtream_format_hint" hint="HLS (m3u8) works on more players; MPEG-TS uses less server resources.">
+                    <select name="xtream_format">
+                        <option value="m3u8" selected={props.c.xtream_format !== 'ts'}>HLS (m3u8)</option>
+                        <option value="ts" selected={props.c.xtream_format === 'ts'}>MPEG-TS (ts)</option>
+                    </select>
+                </Field>
+                <div className="row">
+                    <button type="button" className="secondary" data-action="xtream-test" data-i18n="xtream_test">Check account</button>
+                    <span id="xtreamTestResult" className="small"></span>
+                </div>
+                <small className="hint" data-i18n="xtream_epg_hint">The provider's TV guide (xmltv.php) is used automatically when the EPG field is empty.</small>
+            </div>
             <Field labelKey="config_label" label="Name (optional)" hintKey="config_label_hint" hint="Only for you: shown in the addon name.">
                 <input type="text" name="label" maxlength={80} value={props.label || ''} />
             </Field>

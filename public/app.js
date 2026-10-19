@@ -182,7 +182,7 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+    var CONFIG_FIELDS = ['label', 'country', 'source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
         'aio_compatible', 'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 
@@ -291,11 +291,31 @@
             for (var i = 0; i < fields.length; i++) {
                 if (!fields[i].checkValidity()) { fields[i].reportValidity(); return false; }
             }
-            if (steps[index].getAttribute('data-step') === 'source' && form.m3u.value.trim() === '') {
-                form.m3u.reportValidity();
-                return false;
-            }
             return true;
+        }
+
+        // ---- sorgente: M3U oppure account Xtream (solo i campi visibili sono obbligatori)
+        function sourceType() {
+            return form.elements.source_type ? form.elements.source_type.value || 'm3u' : 'm3u';
+        }
+
+        function syncSource() {
+            var type = sourceType();
+            form.querySelectorAll('.source-panel').forEach(function (panel) {
+                var on = panel.getAttribute('data-source') === type;
+                panel.classList.toggle('hidden', !on);
+                panel.querySelectorAll('input[name="m3u"], input[name="xtream_server"], input[name="xtream_username"], input[name="xtream_password"]').forEach(function (el) {
+                    el.required = on;
+                });
+            });
+        }
+
+        if (form.elements.source_type) {
+            Array.prototype.forEach.call(form.querySelectorAll('input[name="source_type"]'), function (r) {
+                r.addEventListener('change', syncSource);
+            });
+            syncSource();
+            form.addEventListener('omg:source', syncSource);
         }
 
         function showStep(index) {
@@ -328,7 +348,9 @@
             var epgText = !d.epg_enabled ? t('no') : (d.epg ? d.epg.split(',').length + ' URL' : (p && p.epg.length ? t('summary_epg_auto') : 'url-tvg'));
             var rows = [
                 [t('country'), p ? flag(p.iso) + ' ' + countryName(p.iso) : '—'],
-                ['M3U', d.m3u.split(',').filter(Boolean).length + ' URL'],
+                d.source_type === 'xtream'
+                    ? ['Xtream', (d.xtream_server.replace(/^https?:\/\//, '').split('/')[0] || '—') + ' · ' + d.xtream_username + ' · ' + d.xtream_format]
+                    : ['M3U', d.m3u.split(',').filter(Boolean).length + ' URL'],
                 ['EPG', epgText],
                 ['Proxy', d.proxy && d.proxy_pwd ? (d.proxy_type === 'auto' ? t('proxy_type_auto') : d.proxy_type) + ' — ' + t('summary_proxy_all') : t('summary_proxy_none')],
                 [t('mask_streams'), d.mask_streams ? t('yes') : t('no')],
@@ -348,10 +370,37 @@
         var actions = {
             prev: function () { showStep(current - 1); },
             next: function () { if (stepValid(current)) showStep(current + 1); },
+            'xtream-test': function () {
+                var out = $('#xtreamTestResult');
+                out.textContent = t('loader_default');
+                out.className = 'small muted';
+                api('POST', '/api/xtream-test', {
+                    xtream_server: form.xtream_server.value.trim(),
+                    xtream_username: form.xtream_username.value.trim(),
+                    xtream_password: form.xtream_password.value
+                }).then(function (d) {
+                    if (!d.success) {
+                        out.textContent = '❌ ' + errorText(d.message);
+                        out.className = 'small error-text';
+                        return;
+                    }
+                    // Se è stato incollato il link completo, i campi vengono separati
+                    form.xtream_server.value = d.server;
+                    if (!form.xtream_username.value) form.xtream_username.value = d.username;
+                    if (!form.xtream_password.value) form.xtream_password.value = d.password;
+                    var parts = ['✅ ' + t('xtream_status') + ': ' + d.accountStatus];
+                    parts.push(t('xtream_expires') + ': ' + (d.expDate ? new Date(d.expDate).toLocaleDateString(lang) : t('xtream_never')));
+                    if (d.maxConnections !== null) parts.push(t('xtream_connections') + ': ' + (d.activeConnections || 0) + '/' + d.maxConnections);
+                    if (d.isTrial) parts.push('trial');
+                    out.textContent = parts.join(' · ');
+                    out.className = 'small ok-text';
+                });
+            },
             'use-country-playlist': function () {
                 var p = presetFor(countrySel.value);
                 if (!p) { countrySel.reportValidity(); return; }
                 if (!p.m3u) { toast(t('no_country_playlist'), 'error'); return; }
+                if (form.elements.source_type) { form.elements.source_type.value = 'm3u'; syncSource(); }
                 if (form.m3u.readOnly) return;
                 var list = form.m3u.value.split(',').map(function (u) { return u.trim(); }).filter(Boolean);
                 if (list.indexOf(p.m3u) < 0) list.push(p.m3u);
@@ -533,6 +582,7 @@
             reader.onload = function () {
                 try {
                     fillConfig(form, JSON.parse(reader.result));
+                    if (form.elements.source_type) form.dispatchEvent(new Event('omg:source'));
                     toast(t('restore_done'));
                 } catch (err) {
                     alert(t('error_load_config') + err.message);

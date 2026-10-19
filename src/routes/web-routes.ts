@@ -19,11 +19,12 @@ import {
 } from '../security/http';
 import { createLimiter, loginLimiter } from '../security/rate-limit';
 import {
-    checkConfigPassword, ConfigValidationError, createConfig, DEFAULT_CONFIG, deleteConfigs, getConfig, listConfigs,
+    checkConfigPassword, ConfigValidationError, hasSource, createConfig, DEFAULT_CONFIG, deleteConfigs, getConfig, listConfigs,
     normalizeConfig, passwordVersion, setConfigPassword, updateConfig, type ConfigRecord
 } from '../store/config-store';
 import type { UserConfig } from '../types';
 import { checkProxy, proxyLabel } from '../addon/proxy';
+import { getAccount, parseXtreamInput, XtreamAuthError } from '../playlist/xtream';
 import { lastEgress, outboundProxyLabel } from '../http-client';
 import { render } from '../web/jsx';
 import { AdminPage } from '../web/pages/Admin';
@@ -201,7 +202,7 @@ api.post('/configs', wrap(async (req, res) => {
         const record = await createConfig(config, String(body.password || ''), String(body.label || '').trim());
         unlockConfig(req, res, record.id, passwordVersion(record));
         applySchedules(record);
-        if (config.m3u) void getPlaylist(config, record.id).catch(() => undefined);
+        if (hasSource(config)) void getPlaylist(config, record.id).catch(() => undefined);
         logger.log(record.id, 'Configuration created');
         res.json({ success: true, id: record.id, manifestUrl: manifestUrl(req, record.id), configureUrl: `/c/${record.id}/configure?created=1` });
     } catch (e) {
@@ -226,6 +227,21 @@ api.post('/proxy-test', wrap(async (req, res) => {
         label: proxyLabel(check.kind),
         ip: check.ip
     });
+}));
+
+/** Verifica un account Xtream: credenziali, stato e scadenza dell'abbonamento. */
+api.post('/xtream-test', wrap(async (req, res) => {
+    if (limited(req, res, 'xtream-test')) return;
+    const c = parseXtreamInput(String(req.body?.xtream_server || ''), String(req.body?.xtream_username || ''), String(req.body?.xtream_password || ''));
+    if (!/^https?:\/\//.test(c.server)) return fail(res, 400, 'invalid_url:xtream_server');
+    try {
+        const account = await getAccount(c);
+        const { status, ...rest } = account;
+        // "status" lo usa già il client per il codice HTTP: lo stato dell'abbonamento va in accountStatus
+        res.json({ success: true, accountStatus: status, ...rest, server: c.server, username: c.username, password: c.password });
+    } catch (e) {
+        fail(res, e instanceof XtreamAuthError ? 401 : 502, e instanceof XtreamAuthError ? 'xtream_auth_failed' : logger.errMsg(e));
+    }
 }));
 
 api.post('/configs/:id/login', wrap(async (req, res) => {
@@ -258,9 +274,9 @@ api.put('/configs/:id', wrap(async (req, res) => {
         if (foreign) return fail(res, 400, 'invalid_url:m3u');
         const updated = await updateConfig(record.id, config, body.label !== undefined ? String(body.label).trim() : undefined) as ConfigRecord;
         applySchedules(updated);
-        const sourcesChanged = (['m3u', 'remapper_path', 'id_suffix', 'proxy', 'proxy_pwd'] as const)
+        const sourcesChanged = (['source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'remapper_path', 'id_suffix', 'proxy', 'proxy_pwd'] as const)
             .some(k => config[k] !== record.config[k]);
-        if (config.m3u) void getPlaylist(config, record.id, { force: sourcesChanged }).catch(() => undefined);
+        if (hasSource(config)) void getPlaylist(config, record.id, { force: sourcesChanged }).catch(() => undefined);
         res.json({ success: true });
     } catch (e) {
         const msg = validationMessage(e);

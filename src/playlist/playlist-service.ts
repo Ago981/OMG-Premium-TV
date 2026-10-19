@@ -8,6 +8,8 @@ import { GENERATED_SCHEME, generatedPlaylistPath } from '../python/paths';
 import { sha256 } from '../security/crypto';
 import type { Channel, PlaylistData, UserConfig } from '../types';
 import { M3UParser, normalizeId, parseRemapping } from './m3u-parser';
+import { hasSource } from '../store/config-store';
+import { xtreamSourceLabel, xtreamToM3U } from './xtream';
 
 /**
  * Cache playlist condivisa: configurazioni con le stesse sorgenti (M3U + remapper + suffisso)
@@ -29,9 +31,18 @@ const MEMORY_TTL_MS = 30 * 60 * 1000;
 const memory = new Map<string, Entry>();
 const inflight = new Map<string, Promise<Entry>>();
 
-/** Stesse sorgenti = stessa cache. */
-export function playlistKey(cfg: Pick<UserConfig, 'm3u' | 'remapper_path' | 'id_suffix'>): string {
-    return sha256(JSON.stringify([cfg.m3u.trim(), cfg.remapper_path.trim(), cfg.id_suffix.trim()])).slice(0, 24);
+/** Stesse sorgenti = stessa cache (per Xtream: stesso server, account e formato). */
+export function playlistKey(cfg: Pick<UserConfig, 'source_type' | 'm3u' | 'xtream_server' | 'xtream_username' | 'xtream_password' | 'xtream_format' | 'remapper_path' | 'id_suffix'>): string {
+    // Per le M3U la chiave resta quella delle versioni precedenti (nessun riscaricamento dopo l'aggiornamento)
+    const source = cfg.source_type === 'xtream'
+        ? ['xtream', cfg.xtream_server.trim(), cfg.xtream_username.trim(), cfg.xtream_password, cfg.xtream_format]
+        : cfg.m3u.trim();
+    const parts = [source, cfg.remapper_path.trim(), cfg.id_suffix.trim()];
+    return sha256(JSON.stringify(parts)).slice(0, 24);
+}
+
+function sourceLabel(cfg: UserConfig): string {
+    return cfg.source_type === 'xtream' ? xtreamSourceLabel(cfg) : cfg.m3u.split(',').map(u => redact(u.trim())).join(', ');
 }
 
 export function parseInterval(value: string, fallbackMs: number): number {
@@ -94,6 +105,10 @@ export async function downloadPlaylist(cfg: UserConfig, logKey: string): Promise
     const fetch = fetcherFor(cfg);
     const remap = await loadRemapping(cfg.remapper_path, fetch, logKey);
     const parser = new M3UParser(remap, cfg.id_suffix);
+    if (cfg.source_type === 'xtream') {
+        parser.add(await xtreamToM3U(cfg));
+        return parser.result();
+    }
     const sources = cfg.m3u.split(',').map(u => u.trim()).filter(Boolean);
     let loaded = 0;
     for (const source of sources) {
@@ -139,7 +154,7 @@ async function refresh(cfg: UserConfig, key: string, logKey: string): Promise<En
     if (running) return running;
     const job = (async () => {
         const started = Date.now();
-        const source = cfg.m3u.split(',').map(u => redact(u.trim())).join(', ');
+        const source = sourceLabel(cfg);
         try {
             const data = await downloadPlaylist(cfg, logKey);
             const now = Date.now();
@@ -210,7 +225,7 @@ const lastUsedWrites = new Map<string, number>();
  * comunque e avvia l'aggiornamento in background; aspetta solo quando non c'è nulla in cache.
  */
 export async function getPlaylist(cfg: UserConfig, logKey: string, opts: { force?: boolean } = {}): Promise<PlaylistHandle> {
-    if (!cfg.m3u) return EMPTY;
+    if (!hasSource(cfg)) return EMPTY;
     const key = playlistKey(cfg);
     let entry = memory.get(key) || null;
     if (!entry) {
@@ -239,7 +254,7 @@ export function sweepMemory(): void {
 
 /** Elimina dal DB le playlist che nessuna configurazione usa più. */
 export async function gcPlaylists(configs: UserConfig[]): Promise<number> {
-    const used = new Set(configs.filter(c => c.m3u).map(playlistKey));
+    const used = new Set(configs.filter(hasSource).map(playlistKey));
     const rows = await db().all<{ key: string }>('SELECT key FROM playlists');
     const stale = rows.filter(r => !used.has(r.key));
     await db().batch(stale.map(r => ({ sql: 'DELETE FROM playlists WHERE key = ?', params: [r.key] })));

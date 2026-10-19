@@ -76,12 +76,14 @@ function ConfigsTable(props: { configs: ConfigRecord[] }) {
                             const c = r.config;
                             const last = r.lastAccess || r.createdAt;
                             return (
-                                <tr data-id={r.id} data-last={String(last)} data-search={`${r.id} ${r.label} ${hosts(c.m3u)} ${hosts(c.epg)}`.toLowerCase()}>
+                                <tr data-id={r.id} data-last={String(last)} data-search={`${r.id} ${r.label} ${hosts(c.m3u)} ${hosts(c.xtream_server)} ${hosts(c.epg)}`.toLowerCase()}>
                                     <td><input type="checkbox" className="row-select" value={r.id} /></td>
                                     <td><code title={r.id}>{r.id.slice(0, 10)}…</code></td>
                                     <td>{r.legacy ? <span className="badge warn">legacy</span> : r.label || '—'}</td>
                                     <td className="small">
-                                        <div>M3U: {hosts(c.m3u) || '—'}</div>
+                                        {c.source_type === 'xtream'
+                                            ? <div>Xtream: {hosts(c.xtream_server) || '—'} ({c.xtream_username})</div>
+                                            : <div>M3U: {hosts(c.m3u) || '—'}</div>}
                                         {c.epg_enabled ? <div>EPG: {hosts(c.epg) || 'url-tvg'}</div> : null}
                                     </td>
                                     <td>

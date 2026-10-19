@@ -214,3 +214,8 @@ button.wide { width: 100%; margin-top: 18px; }
     .step-label { display: none; }
     .stepper-item { min-width: 44px; }
 }
+
+/* ---- sorgente M3U / Xtream */
+.source-switch { display: flex; flex-wrap: wrap; gap: 18px; margin: 14px 0 4px; }
+.source-switch label.check { margin: 0; }
+.source-switch input[type="radio"] { width: 18px; height: 18px; accent-color: var(--accent); }

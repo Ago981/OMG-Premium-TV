@@ -164,6 +164,26 @@ Non attivare entrambi sullo stesso percorso: WARP dentro WARP rallenta e crea pr
 
 Le chiavi ClearKey vengono lette dalle playlist (`#KODIPROP:inputstream.adaptive.license_key=KID:KEY`).
 
+## 4b. Sorgente Xtream Codes
+
+Nel primo passaggio del wizard si sceglie la sorgente: **playlist M3U** oppure **account Xtream Codes**
+(server, username, password). Si può anche incollare il link `get.php?username=…&password=…` completo:
+server e credenziali vengono separati automaticamente. Il pulsante "Verifica account" mostra stato,
+scadenza e connessioni dell'abbonamento.
+
+- L'addon usa l'API `player_api.php` (categorie e canali live) tramite il proprio client HTTP: le richieste
+  passano da `OUTBOUND_PROXY`/WARP come tutto il resto. Non viene usata la libreria `@iptv/xtream-api`
+  perché usa il `fetch` globale e uscirebbe dall'IP del server.
+- I canali vengono convertiti in una playlist interna: remapping, suffisso ID, abbinamento EPG, proxy,
+  mascheramento e cataloghi funzionano come per le M3U.
+- Se il campo EPG è vuoto si usa la guida del provider (`xmltv.php`), condivisa come le altre sorgenti EPG.
+- Formato degli stream: HLS (`m3u8`, predefinito) o MPEG-TS (`ts`); se il server non consente quello scelto
+  si usa il primo formato consentito.
+- Le credenziali restano salvate sul server: nel pannello admin compaiono solo host e username, nei log
+  la query string è oscurata e, con il mascheramento attivo, gli URL degli stream non le contengono.
+
+Stalker (portali MAG) non è supportato.
+
 ## 5. Nuvio e altre app compatibili
 
 [Nuvio](https://github.com/tapframe/NuvioStreaming) installa gli addon Stremio con lo stesso URL del manifest.

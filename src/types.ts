@@ -1,6 +1,13 @@
 /** Configurazione di un utente, salvata nel DB e identificata da un id casuale. */
 export interface UserConfig {
+    /** Tipo di sorgente dei canali: URL M3U oppure account Xtream Codes. */
+    source_type: SourceType;
     m3u: string;
+    /** Xtream Codes: server (http://host:porta), credenziali e formato degli stream live. */
+    xtream_server: string;
+    xtream_username: string;
+    xtream_password: string;
+    xtream_format: 'm3u8' | 'ts';
     epg: string;
     /** Abilita l'EPG. */
     epg_enabled: boolean;
@@ -30,6 +37,8 @@ export interface UserConfig {
 }
 
 export type ProxyType = 'auto' | 'mediaflow' | 'easyproxy';
+
+export type SourceType = 'm3u' | 'xtream';
 
 export type StreamHeaders = Record<string, string>;
 

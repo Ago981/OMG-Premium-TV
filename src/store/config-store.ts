@@ -25,7 +25,12 @@ interface Row {
 }
 
 export const DEFAULT_CONFIG: UserConfig = {
+    source_type: 'm3u',
     m3u: '',
+    xtream_server: '',
+    xtream_username: '',
+    xtream_password: '',
+    xtream_format: 'm3u8',
     epg: '',
     epg_enabled: false,
     smart_epg: true,
@@ -89,6 +94,8 @@ export function normalizeConfig(input: Record<string, unknown>, opts: { strict?:
         }
     }
     if (!['auto', 'mediaflow', 'easyproxy'].includes(out.proxy_type)) out.proxy_type = 'auto';
+    if (out.source_type !== 'xtream') out.source_type = 'm3u';
+    if (out.xtream_format !== 'ts') out.xtream_format = 'm3u8';
     out.country = /^[a-z]{2}$/i.test(out.country) ? out.country.toLowerCase() : '';
     if (!opts.strict) return out;
 
@@ -99,7 +106,17 @@ export function normalizeConfig(input: Record<string, unknown>, opts: { strict?:
         if (out[key] && !INTERVAL_RE.test(out[key])) throw new ConfigValidationError(`invalid_interval:${key}`);
     }
     if (out.id_suffix && !/^[\w.-]{1,20}$/.test(out.id_suffix)) throw new ConfigValidationError('invalid_suffix');
+    if (out.source_type === 'xtream') {
+        if (!out.xtream_server || !validUrlList(out.xtream_server)) throw new ConfigValidationError('invalid_url:xtream_server');
+        if (!out.xtream_username || !out.xtream_password) throw new ConfigValidationError('xtream_credentials_required');
+    }
     return out;
+}
+
+/** La configurazione ha una sorgente di canali (M3U o account Xtream). */
+export function hasSource(cfg: Pick<UserConfig, 'source_type' | 'm3u' | 'xtream_server' | 'xtream_username' | 'xtream_password'>): boolean {
+    if (cfg.source_type === 'xtream') return !!(cfg.xtream_server && cfg.xtream_username && cfg.xtream_password);
+    return !!cfg.m3u;
 }
 
 function fromRow(row: Row): ConfigRecord {

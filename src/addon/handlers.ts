@@ -4,7 +4,7 @@ import * as logger from '../logger';
 import { getPlaylist, type PlaylistHandle } from '../playlist/playlist-service';
 import { countryLangAbbr, countryPreset } from '../presets';
 import { getRuntime } from '../runtime';
-import type { ConfigRecord } from '../store/config-store';
+import { hasSource, type ConfigRecord } from '../store/config-store';
 import type { Channel, StremioStream, UserConfig } from '../types';
 import { I18N } from '../web/i18n';
 import { buildStreams, maskUrl } from './streams';
@@ -224,7 +224,7 @@ function isSettingsChannel(ch: Channel): boolean {
 
 export async function catalogHandler(ctx: AddonContext, extra: CatalogExtra): Promise<{ metas: unknown[] }> {
     const cfg = ctx.record.config;
-    if (!cfg.m3u) return { metas: [] };
+    if (!hasSource(cfg)) return { metas: [] };
     const playlist = await getPlaylist(cfg, ctx.record.id);
     const skip = extra.skip || 0;
 
@@ -265,7 +265,7 @@ export async function metaHandler(ctx: AddonContext, id: string): Promise<{ meta
             }
         };
     }
-    if (!cfg.m3u) return { meta: null };
+    if (!hasSource(cfg)) return { meta: null };
     const playlist = await getPlaylist(cfg, ctx.record.id);
     const ch = playlist.getChannel(channelId);
     if (!ch) return { meta: null };
@@ -341,7 +341,7 @@ export async function streamHandler(ctx: AddonContext, id: string): Promise<{ st
         return pseudoStream(cfg, false, rt.runner.lastError || t('unknown_error', cfg));
     }
     if (channelId === 'refreshm3u') {
-        if (!cfg.m3u) return pseudoStream(cfg, false, t('error_m3u_missing', cfg));
+        if (!hasSource(cfg)) return pseudoStream(cfg, false, t('error_m3u_missing', cfg));
         try {
             const p = await getPlaylist(cfg, record.id, { force: true });
             if (p.lastError) return pseudoStream(cfg, false, p.lastError);
@@ -359,7 +359,7 @@ export async function streamHandler(ctx: AddonContext, id: string): Promise<{ st
         return pseudoStream(cfg, true, t('epg_refreshed', cfg));
     }
 
-    if (!cfg.m3u) return { streams: [] };
+    if (!hasSource(cfg)) return { streams: [] };
     const playlist = await getPlaylist(cfg, record.id);
     const ch = playlist.getChannel(channelId);
     if (!ch) {

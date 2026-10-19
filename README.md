@@ -36,6 +36,12 @@ Miglioramenti a prestazioni, privacy dei proxy e compatibilità cataloghi:
 
 > ℹ️ *Nota sulla versione precedente*: la versione **7.0.0** (Node.js monolitica classica) rimane pienamente disponibile e consultabile sul branch dedicato [`7.0.0`](https://github.com/mccoy88f/OMG-Premium-TV/tree/7.0.0).
 
+#### 📡 Novità: account Xtream Codes
+- Nel wizard si può scegliere come sorgente un **account Xtream Codes** (server, username, password) invece di un URL M3U; basta anche incollare il link `get.php` completo.
+- Pulsante **Verifica account** con stato, scadenza e connessioni dell'abbonamento.
+- Guida TV del provider (`xmltv.php`) attivata automaticamente se non indichi un EPG.
+- Tutte le richieste passano dal client dell'addon (WARP/proxy di uscita); credenziali mai visibili nelle risposte o nei log.
+
 ### 🚀 Versione 8.0.0
 
 Riscrittura completa in **TypeScript/TSX** con architettura multi-utente. Guida completa: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
