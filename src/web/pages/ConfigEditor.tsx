@@ -119,17 +119,15 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                     <Field labelKey="tmdb_api_key" label="TMDB API key" hintKey="tmdb_key_hint" hint="Free at themoviedb.org → Settings → API: API key (v3) or Read Access Token (v4). Used only for your titles.">
                         <input type="password" name="tmdb_api_key" value={props.c.tmdb_api_key} autocomplete="off" />
                     </Field>
-                    <div className="row">
+                    <div className="row half-buttons">
                         <button type="button" className="secondary" data-action="tmdb-test" data-i18n="tmdb_test">Check key</button>
-                        <span id="tmdbTestResult" className="small"></span>
+                        {props.edit ? <button type="button" className="secondary" data-action="vod-refresh" data-i18n="vod_refresh">Update now</button> : null}
                     </div>
+                    <div id="tmdbTestResult" className="small"></div>
+                    {props.edit ? <div id="vodStatus" className="small muted"></div> : null}
                     <textarea name="vod_excluded" className="hidden">{props.c.vod_excluded}</textarea>
                     {props.edit ? (
                         <>
-                            <div className="row">
-                                <span id="vodStatus" className="small muted"></span>
-                                <button type="button" className="secondary" data-action="vod-refresh" data-i18n="vod_refresh">Update now</button>
-                            </div>
                             <Collapsible id="vodCategoriesBox" titleKey="vod_exclude_title" title="Categories to hide">
                                 <small className="hint" data-i18n="vod_exclude_hint">Ticked categories (and their subcategories) disappear from catalogs, search and streams. Save to apply; reinstall the addon to update the filter list in Stremio.</small>
                                 <div id="vodCategories" className="cat-list"></div>

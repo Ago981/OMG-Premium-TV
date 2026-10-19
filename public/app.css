@@ -225,3 +225,4 @@ button.wide { width: 100%; margin-top: 18px; }
 .cat-list h4 { margin: 10px 0 4px; }
 .cat-list label.check { margin: 2px 0; font-size: 14px; }
 .cat-list label.check .count { color: var(--muted); font-size: 12px; }
+.row.half-buttons > button { flex: 0 1 calc(50% - 5px); }
