@@ -6,7 +6,7 @@ import { closeDatabase, db, initDatabase } from '../src/db';
 import { env } from '../src/env';
 import { initAppSecret } from '../src/security/crypto';
 import { createConfig, deleteConfigs, getConfig, normalizeConfig, updateConfig, ConfigValidationError } from '../src/store/config-store';
-import { cleanTitle, tmdbLanguage } from '../src/vod/tmdb';
+import { cleanTitle, stripTrailingYear, tmdbLanguage } from '../src/vod/tmdb';
 import { buildCategoryTree, parseExcluded, usedCategories } from '../src/vod/categories';
 import { getVodState, listVod, matchPending, syncLists } from '../src/vod/vod-service';
 import { vodCatalog, vodMeta, vodStreams } from '../src/vod/vod-addon';
@@ -41,6 +41,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
     before(async () => {
         xtream = http.createServer((req, res) => {
             const u = new URL(req.url || '/', 'http://x');
+            if (u.pathname === '/cover.jpg') return void res.writeHead(200, { 'Content-Type': 'image/jpeg' }).end('jpg');
             if (u.searchParams.get('username') !== USER || u.searchParams.get('password') !== PASS) return json(res, { user_info: { auth: 0 } });
             switch (u.searchParams.get('action')) {
                 case null: return json(res, { user_info: { auth: 1, status: 'Active', allowed_output_formats: ['m3u8'] } });
@@ -48,7 +49,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
                 case 'get_series_categories': return json(res, [{ category_id: '9', category_name: 'Serie' }]);
                 case 'get_vod_streams': return json(res, movies);
                 // oggetto indicizzato invece di array: alcuni pannelli lo fanno
-                case 'get_series': return json(res, { 0: { series_id: 70, name: 'Breaking Bad', cover: 'https://img/bb.jpg', category_id: '9', releaseDate: '2008-01-20' } });
+                case 'get_series': return json(res, { 0: { series_id: 70, name: 'Breaking Bad', cover: `http://${req.headers.host}/cover.jpg`, category_id: '9', releaseDate: '2008-01-20' } });
                 case 'get_series_info': return json(res, {
                     info: { name: 'Breaking Bad', plot: 'Chimica', genre: 'Drama, Crime' },
                     episodes: { 1: [{ id: '701', episode_num: 1, title: 'Pilot', container_extension: 'mkv' }, { id: '702', episode_num: 2, title: 'Cat', container_extension: 'mkv' }] }
@@ -114,6 +115,14 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.equal(tmdbLanguage('English', 'uk'), 'en-GB');
     });
 
+    test('a year written at the end of the title is not part of the search', () => {
+        assert.equal(stripTrailingYear('VisionQuest 2026'), 'VisionQuest');
+        assert.equal(stripTrailingYear('Marshals A Yellowstone Story 2026'), 'Marshals A Yellowstone Story');
+        assert.equal(stripTrailingYear('Doc - 2020'), 'Doc');
+        assert.equal(stripTrailingYear('Blade Runner 2049'), 'Blade Runner 2049', 'not a plausible year');
+        assert.equal(stripTrailingYear('1917'), '1917', 'a title made only of a year stays');
+    });
+
     test('titles are cleaned before searching TMDB', () => {
         assert.equal(cleanTitle('IT - Il Padrino (1972) [4K]'), 'Il Padrino');
         assert.equal(cleanTitle('|IT| Breaking Bad HD'), 'Breaking Bad');
@@ -145,6 +154,8 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
             source_type: 'xtream', xtream_server: server, xtream_username: USER, xtream_password: PASS,
             xtream_vod: true, tmdb_api_key: KEY, mask_streams: false
         });
+        // Copertina del provider che non si apre (risposta non immagine): si usa il segnaposto
+        movies[2] = { ...movies[2], stream_icon: `${server}/broken.jpg` } as typeof movies[2];
         const record = await createConfig(cfg, 'password123');
         const ctx = { record, baseUrl: 'http://addon' };
 
@@ -170,7 +181,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.equal(posters[0], 'https://image.tmdb.org/t/p/w342/padrino-it.jpg', 'TMDB poster in the configuration language first');
         assert.match(posters[1], /^https:\/\/dummyimage\.com\/342x513\/9e1b32\/.*Film\+Sconosciuto/, 'movie placeholder with its own colour');
         const series = await vodCatalog(ctx, 'series', {}) as { metas: { poster: string }[] };
-        assert.equal(series.metas[0].poster, 'https://img/bb.jpg', 'provider cover when TMDB has none');
+        assert.equal(series.metas[0].poster, `${server}/cover.jpg`, 'working provider cover when TMDB has none');
         // Pagine da un titolo: lo skip di Stremio conta i titoli unici, non le righe
         const page2 = await listVod(record.id, 'movie', { skip: 1, limit: 1 });
         assert.deepEqual(page2.map(i => i.itemId), ['13']);

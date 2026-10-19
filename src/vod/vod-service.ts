@@ -1,3 +1,4 @@
+import { request } from '../http-client';
 import { db, type Param, type Statement } from '../db';
 import { env } from '../env';
 import * as logger from '../logger';
@@ -30,6 +31,7 @@ export interface VodItem {
     imdbId: string | null;
     tmdbPoster: string | null;
     tmdbBackdrop: string | null;
+    posterBroken: boolean;
 }
 
 export interface VodState {
@@ -132,6 +134,7 @@ function upsertStatements(rows: Param[][]): Statement[] {
                     match_state = CASE WHEN ${same} THEN vod_items.match_state ELSE 0 END,
                     tmdb_poster = CASE WHEN ${same} THEN vod_items.tmdb_poster ELSE NULL END,
                     tmdb_backdrop = CASE WHEN ${same} THEN vod_items.tmdb_backdrop ELSE NULL END,
+                    poster_broken = CASE WHEN vod_items.poster IS NOT DISTINCT FROM excluded.poster THEN vod_items.poster_broken ELSE 0 END,
                     tmdb_id = excluded.tmdb_id`,
             params: chunk.flat()
         });
@@ -288,6 +291,18 @@ interface PendingRow {
     name: string;
     year: number | null;
     tmdb_id: string | null;
+    poster: string | null;
+}
+
+/** La copertina del provider si apre davvero? (molte sono link morti: in Stremio resterebbe un riquadro vuoto) */
+async function posterWorks(url: string): Promise<boolean> {
+    try {
+        const res = await request(url, { headers: { Range: 'bytes=0-0' }, timeoutMs: 8000 });
+        await res.body?.cancel();
+        return res.status < 400 && /^image\//i.test(res.headers.get('content-type') || 'image/');
+    } catch {
+        return false;
+    }
 }
 
 /** Collega a IMDb i titoli non ancora abbinati, con la chiave TMDB dell'utente. */
@@ -297,10 +312,10 @@ export async function matchPending(record: ConfigRecord, concurrency = 6): Promi
     let done = 0;
     for (;;) {
         const rows = await db().all<PendingRow>(
-            `SELECT kind, item_id, name, year, tmdb_id FROM vod_items WHERE config_id = ? AND match_state = 0
+            `SELECT kind, item_id, name, year, tmdb_id, poster FROM vod_items WHERE config_id = ? AND match_state = 0
              ORDER BY added DESC NULLS LAST LIMIT 120`, [record.id]);
         if (!rows.length) return done;
-        const results: { row: PendingRow; match: Awaited<ReturnType<typeof tmdbMatch>> }[] = [];
+        const results: { row: PendingRow; match: Awaited<ReturnType<typeof tmdbMatch>>; broken: boolean }[] = [];
         let next = 0;
         let failed = false;
         await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, async () => {
@@ -308,7 +323,9 @@ export async function matchPending(record: ConfigRecord, concurrency = 6): Promi
                 const row = rows[next++];
                 try {
                     const match = await tmdbMatch(cfg.tmdb_api_key, row.kind, { tmdbId: row.tmdb_id, name: row.name, year: row.year }, language);
-                    results.push({ row, match });
+                    // Senza locandina TMDB si userà quella del provider: si controlla che funzioni
+                    const broken = !match?.poster && !!row.poster && !(await posterWorks(row.poster));
+                    results.push({ row, match, broken });
                 } catch (e) {
                     failed = true; // chiave non valida o TMDB irraggiungibile: si ferma tutto e si riprova più tardi
                     throw e;
@@ -317,10 +334,10 @@ export async function matchPending(record: ConfigRecord, concurrency = 6): Promi
         }));
         // L'ID IMDb fornito dal pannello resta se TMDB non ne trova uno
         await db().batch(results.map(r => ({
-            sql: `UPDATE vod_items SET imdb_id = COALESCE(?, imdb_id), tmdb_poster = ?, tmdb_backdrop = ?,
+            sql: `UPDATE vod_items SET imdb_id = COALESCE(?, imdb_id), tmdb_poster = ?, tmdb_backdrop = ?, poster_broken = ?,
                     match_state = CASE WHEN COALESCE(?, imdb_id) IS NOT NULL THEN 1 ELSE 2 END
                   WHERE config_id = ? AND kind = ? AND item_id = ?`,
-            params: [r.match?.imdbId ?? null, r.match?.poster ?? null, r.match?.backdrop ?? null, r.match?.imdbId ?? null, record.id, r.row.kind, r.row.item_id]
+            params: [r.match?.imdbId ?? null, r.match?.poster ?? null, r.match?.backdrop ?? null, r.broken ? 1 : 0, r.match?.imdbId ?? null, record.id, r.row.kind, r.row.item_id]
         })));
         done += results.length;
     }
@@ -403,13 +420,14 @@ interface ItemRow {
     imdb_id: string | null;
     tmdb_poster: string | null;
     tmdb_backdrop: string | null;
+    poster_broken: number;
 }
 
 function fromItemRow(r: ItemRow): VodItem {
-    return { kind: r.kind, itemId: r.item_id, name: r.name, poster: r.poster, year: r.year, rating: r.rating, category: r.category, ext: r.ext, imdbId: r.imdb_id, tmdbPoster: r.tmdb_poster, tmdbBackdrop: r.tmdb_backdrop };
+    return { kind: r.kind, itemId: r.item_id, name: r.name, poster: r.poster, year: r.year, rating: r.rating, category: r.category, ext: r.ext, imdbId: r.imdb_id, tmdbPoster: r.tmdb_poster, tmdbBackdrop: r.tmdb_backdrop, posterBroken: Number(r.poster_broken) === 1 };
 }
 
-const ITEM_COLUMNS = 'kind, item_id, name, poster, year, rating, category, ext, imdb_id, tmdb_poster, tmdb_backdrop';
+const ITEM_COLUMNS = 'kind, item_id, name, poster, year, rating, category, ext, imdb_id, tmdb_poster, tmdb_backdrop, poster_broken';
 
 /** Filtro comune: configurazione, tipo e categorie escluse dall'utente. */
 function baseWhere(configId: string, kind: VodKind, excluded: string[]): { where: string[]; params: Param[] } {

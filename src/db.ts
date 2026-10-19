@@ -144,7 +144,16 @@ const SCHEMA_V4 = `
     UPDATE vod_state SET status = 'pending';
 `;
 
-const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4];
+/**
+ * Copertine del provider che non si aprono (poster_broken) e nuovo tentativo per i titoli non trovati:
+ * la ricerca ora toglie l'anno scritto in fondo al nome ("VisionQuest 2026").
+ */
+const SCHEMA_V5 = `
+    ALTER TABLE vod_items ADD COLUMN IF NOT EXISTS poster_broken SMALLINT NOT NULL DEFAULT 0;
+    UPDATE vod_items SET match_state = 0 WHERE match_state = 2;
+`;
+
+const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5];
 
 function splitStatements(sql: string): string[] {
     return sql

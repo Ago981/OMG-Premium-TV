@@ -85,6 +85,16 @@ export function cleanTitle(name: string): string {
         .trim();
 }
 
+/**
+ * Anno in fondo al titolo senza parentesi ("VisionQuest 2026", "Doc - 2020") → senza anno.
+ * Solo anni plausibili (fino all'anno prossimo): "Blade Runner 2049" resta com'è.
+ */
+export function stripTrailingYear(title: string): string {
+    const m = title.match(/^(.{2,}?)\s*[-–]?\s+((?:19|20)\d{2})$/);
+    if (!m || Number(m[2]) > new Date().getFullYear() + 1) return title;
+    return m[1].trim();
+}
+
 export function yearOf(...values: unknown[]): number | null {
     for (const v of values) {
         const m = String(v ?? '').match(/\b(19\d{2}|20\d{2})\b/);
@@ -109,18 +119,27 @@ interface SearchResult {
 
 /** Ricerca per titolo: accetta solo un titolo identico (normalizzato) e, se noto, l'anno ±1. */
 async function searchTmdb(key: string, kind: VodKind, name: string, year: number | null, language: string): Promise<number | null> {
-    const title = cleanTitle(name);
+    const base = cleanTitle(name);
+    const title = stripTrailingYear(base);
     if (title.length < 2) return null;
-    const params: Record<string, string> = { query: title, include_adult: 'false', language };
-    if (year) params[kind === 'movie' ? 'year' : 'first_air_date_year'] = String(year);
-    const data = await tmdbGet<{ results?: SearchResult[] }>(key, `/search/${kind === 'movie' ? 'movie' : 'tv'}`, params);
-    const wanted = norm(title);
-    for (const r of data?.results || []) {
-        const names = [r.title, r.original_title, r.name, r.original_name].filter(Boolean).map(n => norm(n as string));
-        if (!names.includes(wanted)) continue;
-        const ry = yearOf(r.release_date, r.first_air_date);
-        if (year && ry && Math.abs(ry - year) > 1) continue;
-        return r.id;
+    // Tentativi: titolo senza anno con l'anno come filtro, poi senza filtro (per le serie l'anno nel nome
+    // è spesso quello della stagione, non della prima messa in onda), infine il titolo così com'è
+    const attempts: [string, number | null][] = [[title, year]];
+    if (year) attempts.push([title, null]);
+    if (base !== title) attempts.push([base, null]);
+    for (const [query, filterYear] of attempts) {
+        const params: Record<string, string> = { query, include_adult: 'false', language };
+        if (filterYear) params[kind === 'movie' ? 'year' : 'first_air_date_year'] = String(filterYear);
+        const data = await tmdbGet<{ results?: SearchResult[] }>(key, `/search/${kind === 'movie' ? 'movie' : 'tv'}`, params);
+        const wanted = norm(query);
+        for (const r of data?.results || []) {
+            const names = [r.title, r.original_title, r.name, r.original_name].filter(Boolean).map(n => norm(n as string));
+            if (!names.includes(wanted)) continue;
+            const ry = yearOf(r.release_date, r.first_air_date);
+            // Senza filtro, per i film l'anno deve comunque tornare (±1); per le serie basta il titolo
+            if (year && ry && Math.abs(ry - year) > 1 && (filterYear || kind === 'movie')) continue;
+            return r.id;
+        }
     }
     return null;
 }

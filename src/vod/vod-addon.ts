@@ -8,7 +8,7 @@ import { buildStreams } from '../addon/streams';
 import type { VodKind } from './tmdb';
 import { findByImdb, getVodItem, listVod, vodCategories, type VodItem } from './vod-service';
 import { isExcluded, leafOf, parseExcluded } from './categories';
-import { cleanTitle } from './tmdb';
+import { cleanTitle, stripTrailingYear } from './tmdb';
 
 /**
  * Cataloghi, schede e stream di film e serie Xtream.
@@ -139,11 +139,19 @@ export async function vodManifestCatalogs(record: ConfigRecord, catalogId: strin
  * Copertina: TMDB (nella lingua dell'utente), poi quella del provider, poi quella pubblica di Stremio
  * per l'ID IMDb; senza nessuna, un segnaposto con il titolo (come per i canali).
  */
+/** Titolo mostrato: senza prefissi, etichette e anno (l'anno Stremio lo mostra a parte). */
+function displayTitle(name: string): string {
+    return stripTrailingYear(cleanTitle(name)) || name;
+}
+
+/**
+ * Copertina (vedi sopra).
+ */
 function posterOf(item: VodItem): string {
     if (item.tmdbPoster) return item.tmdbPoster;
-    if (item.poster && /^https?:\/\//.test(item.poster)) return item.poster;
+    if (item.poster && !item.posterBroken && /^https?:\/\//.test(item.poster)) return item.poster;
     if (item.imdbId) return `https://images.metahub.space/poster/medium/${item.imdbId}/img`;
-    const title = (cleanTitle(item.name) || item.name).slice(0, 40);
+    const title = (displayTitle(item.name)).slice(0, 40);
     // Colori del segnaposto: viola per i canali, rosso cinema per i film, blu petrolio per le serie
     const color = item.kind === 'movie' ? PLACEHOLDER_MOVIE : PLACEHOLDER_SERIES;
     return `https://dummyimage.com/342x513/${color}/ffffff.jpg&text=${encodeURIComponent(title).replace(/%20/g, '+')}`;
@@ -154,7 +162,7 @@ function previewMeta(item: VodItem) {
     return {
         id: item.imdbId || `${prefix}${item.itemId}`,
         type: item.kind,
-        name: cleanTitle(item.name) || item.name,
+        name: displayTitle(item.name),
         poster: posterOf(item),
         background: item.tmdbBackdrop || undefined,
         posterShape: 'poster',
@@ -183,7 +191,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
             meta: {
                 ...previewMeta(item),
                 id,
-                poster: item.tmdbPoster || item.poster || info.movie_image || info.cover_big || posterOf(item),
+                poster: item.tmdbPoster || (item.posterBroken ? null : item.poster) || info.movie_image || info.cover_big || posterOf(item),
                 background: item.tmdbBackdrop || firstImage(info.backdrop_path) || info.cover_big || undefined,
                 description: info.plot || info.description,
                 cast: list(info.cast || info.actors),
@@ -218,7 +226,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
             meta: {
                 ...previewMeta(item),
                 id: `${SERIES_PREFIX}${seriesId}`,
-                poster: item.tmdbPoster || item.poster || info.cover || posterOf(item),
+                poster: item.tmdbPoster || (item.posterBroken ? null : item.poster) || info.cover || posterOf(item),
                 background: item.tmdbBackdrop || firstImage(info.backdrop_path) || undefined,
                 description: info.plot,
                 cast: list(info.cast),
