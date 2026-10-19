@@ -63,6 +63,7 @@ function InstallBox(props: { manifestUrl: string; id: string; created?: boolean 
                 <button type="button" data-action="copy-manifest" data-i18n="copy_manifest">COPY MANIFEST URL</button>
                 <button type="button" data-action="install" data-i18n="install_stremio">INSTALL ON STREMIO</button>
             </div>
+            <div id="vodInstallNote" className="notice-box hidden" data-i18n="vod_install_note">Movies and series are still being prepared: wait for "Ready" below before installing, or reinstall the addon afterwards to get the category filters.</div>
             <p className="small muted" data-i18n="install_nuvio_hint">Nuvio and other Stremio-compatible apps: add the manifest URL in the addons section.</p>
             <p className="small muted" data-i18n="manifest_private_note">The manifest URL contains only the configuration ID. Keep it private.</p>
         </div>
@@ -122,12 +123,21 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                         <button type="button" className="secondary" data-action="tmdb-test" data-i18n="tmdb_test">Check key</button>
                         <span id="tmdbTestResult" className="small"></span>
                     </div>
+                    <textarea name="vod_excluded" className="hidden">{props.c.vod_excluded}</textarea>
                     {props.edit ? (
-                        <div className="row">
-                            <span id="vodStatus" className="small muted"></span>
-                            <button type="button" className="secondary" data-action="vod-refresh" data-i18n="vod_refresh">Update now</button>
-                        </div>
-                    ) : null}
+                        <>
+                            <div className="row">
+                                <span id="vodStatus" className="small muted"></span>
+                                <button type="button" className="secondary" data-action="vod-refresh" data-i18n="vod_refresh">Update now</button>
+                            </div>
+                            <Collapsible id="vodCategoriesBox" titleKey="vod_exclude_title" title="Categories to hide">
+                                <small className="hint" data-i18n="vod_exclude_hint">Ticked categories (and their subcategories) disappear from catalogs, search and streams. Save to apply; reinstall the addon to update the filter list in Stremio.</small>
+                                <div id="vodCategories" className="cat-list"></div>
+                            </Collapsible>
+                        </>
+                    ) : (
+                        <small className="hint" data-i18n="vod_exclude_later">After saving you can choose which categories to hide.</small>
+                    )}
                 </div>
             </div>
             <Field labelKey="config_label" label="Name (optional)" hintKey="config_label_hint" hint="Only for you: shown in the addon name.">

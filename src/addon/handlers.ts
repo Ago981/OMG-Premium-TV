@@ -113,10 +113,7 @@ export async function manifestHandler(ctx: AddonContext): Promise<Record<string,
     const catalogName = record.label && !record.legacy ? `${m.catalogName} · ${record.label}` : m.catalogName;
     const vod = vodEnabled(record.config);
     const vodCatalogs = vod
-        ? await vodManifestCatalogs(record, catalogId, {
-            movies: `${catalogName} · ${t('vod_movies', record.config)}`,
-            series: `${catalogName} · ${t('vod_series', record.config)}`
-        })
+        ? await vodManifestCatalogs(record, catalogId, catalogName)
         : [];
     // Con film e serie: meta solo per i nostri ID, stream anche per gli ID IMDb (pagine di Cinemeta)
     const resources = vod

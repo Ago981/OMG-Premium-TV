@@ -12,6 +12,8 @@ export interface UserConfig {
     xtream_vod: boolean;
     /** Chiave API TMDB dell'utente: serve a collegare film/serie agli ID IMDb delle pagine Stremio. */
     tmdb_api_key: string;
+    /** Categorie di film/serie escluse dai cataloghi (percorsi completi, una per riga). */
+    vod_excluded: string;
     epg: string;
     /** Abilita l'EPG. */
     epg_enabled: boolean;

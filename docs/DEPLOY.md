@@ -184,8 +184,20 @@ scadenza e connessioni dell'abbonamento.
 
 ### Film e serie TV
 
-Con l'opzione **Includi film e serie TV** l'addon aggiunge i cataloghi *Film* e *Serie* (categorie del
-provider come filtri, ricerca per titolo). Serve una **chiave API TMDB** dell'utente (gratuita su
+Con l'opzione **Includi film e serie TV** l'addon aggiunge un catalogo di tipo *Film* e uno di tipo
+*Serie* (in Scopri, nella Home e nella ricerca di Stremio), con lo stesso nome del catalogo dei canali
+(`OMG+ · <nome configurazione>`). Le categorie del provider sono i filtri, con le **sottocategorie**:
+ricavate da `parent_id` se il pannello lo usa, altrimenti dal prefisso comune nei nomi (`IT | Azione`,
+`IT | Commedia` → `IT › Azione`, `IT › Commedia`). Scegliere una categoria madre mostra anche le figlie.
+I titoli sono mostrati senza prefissi e anno (`IT - Il Padrino (1972)` → `Il Padrino`, anno a parte) e le
+copie dello stesso titolo (HD, 4K…) compaiono una volta sola, con tutti gli stream.
+
+Dopo la prima sincronizzazione, nella pagina della configurazione si possono spuntare le **categorie da
+nascondere** (es. adulti o lingue che non interessano): spariscono da cataloghi, ricerca e stream. Il
+contenuto dei cataloghi cambia subito; per aggiornare l'elenco dei filtri in Stremio va reinstallato
+l'addon (stesso URL), perché Stremio conserva il manifest installato. Per lo stesso motivo, se l'addon
+viene installato prima che la sincronizzazione sia finita, i filtri compaiono dopo una reinstallazione:
+la pagina della configurazione lo segnala finché lo stato non è «Pronto». Serve una **chiave API TMDB** dell'utente (gratuita su
 themoviedb.org → Impostazioni → API; va bene la chiave v3 o il Read Access Token v4).
 
 - Le liste del provider (`get_vod_streams`, `get_series`) vengono salvate nel DB per configurazione e

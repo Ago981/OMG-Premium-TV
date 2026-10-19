@@ -5,6 +5,7 @@ import { parseInterval } from '../playlist/playlist-service';
 import { credentialsOf, getAccount, xtreamCall, type XtreamCredentials } from '../playlist/xtream';
 import { getConfig, listActiveConfigs, vodEnabled, type ConfigRecord } from '../store/config-store';
 import type { UserConfig } from '../types';
+import { buildCategoryTree, categoryMatch, excludeCategories, usedCategories, type CategoryRaw } from './categories';
 import { imdbIdFor, TmdbAuthError, tmdbLanguage, yearOf, type VodKind } from './tmdb';
 
 /**
@@ -38,11 +39,6 @@ export interface VodState {
     categories: { movie: string[]; series: string[] };
     updatedAt: number | null;
     lastError: string | null;
-}
-
-interface CategoryRaw {
-    category_id: string | number;
-    category_name: string;
 }
 
 interface ListRaw {
@@ -246,8 +242,10 @@ export async function syncLists(record: ConfigRecord): Promise<{ movies: number;
     if (account.status.toLowerCase() !== 'active') throw new Error(`Xtream account not active (${account.status})`);
     const lists = await fetchLists(c);
     const stamp = Date.now();
-    const movieCat = new Map(lists.movieCats.map(x => [String(x.category_id), String(x.category_name || '').trim()]));
-    const seriesCat = new Map(lists.seriesCats.map(x => [String(x.category_id), String(x.category_name || '').trim()]));
+    const movieTree = buildCategoryTree(lists.movieCats);
+    const seriesTree = buildCategoryTree(lists.seriesCats);
+    const movieCat = movieTree.pathById;
+    const seriesCat = seriesTree.pathById;
 
     const rows: Param[][] = [];
     const seen = new Set<string>();
@@ -261,12 +259,8 @@ export async function syncLists(record: ConfigRecord): Promise<{ movies: number;
     }
     const movies = rows.filter(r => r[1] === 'movie').length;
     const series = rows.length - movies;
-    const used = (kind: VodKind) => [...new Set(rows.filter(r => r[1] === kind).map(r => r[8] as string | null).filter((x): x is string => !!x))];
-    const order = (names: string[], cats: CategoryRaw[]) => {
-        const pos = new Map(cats.map((x, i) => [String(x.category_name || '').trim(), i]));
-        return names.sort((a, b) => (pos.get(a) ?? 1e9) - (pos.get(b) ?? 1e9));
-    };
-    const categories = JSON.stringify({ movie: order(used('movie'), lists.movieCats), series: order(used('series'), lists.seriesCats) });
+    const used = (kind: VodKind) => new Set(rows.filter(r => r[1] === kind).map(r => r[8] as string | null).filter((x): x is string => !!x));
+    const categories = JSON.stringify({ movie: usedCategories(movieTree.order, used('movie')), series: usedCategories(seriesTree.order, used('series')) });
 
     await db().batch([
         ...upsertStatements(rows),
@@ -401,32 +395,61 @@ function fromItemRow(r: ItemRow): VodItem {
 
 const ITEM_COLUMNS = 'kind, item_id, name, poster, year, rating, category, ext, imdb_id';
 
-export async function listVod(configId: string, kind: VodKind, opts: { genre?: string; search?: string; skip?: number; limit: number }): Promise<VodItem[]> {
+/** Filtro comune: configurazione, tipo e categorie escluse dall'utente. */
+function baseWhere(configId: string, kind: VodKind, excluded: string[]): { where: string[]; params: Param[] } {
     const where = ['config_id = ?', 'kind = ?'];
     const params: Param[] = [configId, kind];
+    const ex = excludeCategories(excluded);
+    if (ex) {
+        where.push(ex.sql);
+        params.push(...ex.params);
+    }
+    return { where, params };
+}
+
+/**
+ * Pagina di un catalogo. Le copie dello stesso titolo (stesso ID IMDb, es. HD e 4K) sono unite già
+ * nella query: ogni pagina ha titoli unici, così lo "skip" di Stremio corrisponde a quello del DB.
+ */
+export async function listVod(configId: string, kind: VodKind, opts: { genre?: string; search?: string; skip?: number; limit: number; excluded?: string[] }): Promise<VodItem[]> {
+    const { where, params } = baseWhere(configId, kind, opts.excluded || []);
     if (opts.search) {
         for (const word of nameKey(opts.search).split(' ').filter(Boolean).slice(0, 6)) {
             where.push('name_key LIKE ?');
             params.push(`%${word}%`);
         }
     } else if (opts.genre) {
-        where.push('category = ?');
-        params.push(opts.genre);
+        const m = categoryMatch(opts.genre);
+        where.push(m.sql);
+        params.push(...m.params);
     }
     params.push(opts.limit, opts.skip || 0);
     const rows = await db().all<ItemRow>(
-        `SELECT ${ITEM_COLUMNS} FROM vod_items WHERE ${where.join(' AND ')}
-         ORDER BY added DESC NULLS LAST, name LIMIT ? OFFSET ?`, params);
+        `SELECT ${ITEM_COLUMNS} FROM (
+            SELECT DISTINCT ON (COALESCE(imdb_id, item_id)) ${ITEM_COLUMNS}, added
+            FROM vod_items WHERE ${where.join(' AND ')}
+            ORDER BY COALESCE(imdb_id, item_id), added DESC NULLS LAST, item_id
+         ) t ORDER BY added DESC NULLS LAST, name, item_id LIMIT ? OFFSET ?`, params);
     return rows.map(fromItemRow);
 }
 
-export async function getVodItem(configId: string, kind: VodKind, itemId: string): Promise<VodItem | null> {
-    const r = await db().get<ItemRow>(`SELECT ${ITEM_COLUMNS} FROM vod_items WHERE config_id = ? AND kind = ? AND item_id = ?`, [configId, kind, itemId]);
+export async function getVodItem(configId: string, kind: VodKind, itemId: string, excluded: string[] = []): Promise<VodItem | null> {
+    const { where, params } = baseWhere(configId, kind, excluded);
+    const r = await db().get<ItemRow>(`SELECT ${ITEM_COLUMNS} FROM vod_items WHERE ${where.join(' AND ')} AND item_id = ?`, [...params, itemId]);
     return r ? fromItemRow(r) : null;
 }
 
-export async function findByImdb(configId: string, kind: VodKind, imdbId: string): Promise<VodItem[]> {
+export async function findByImdb(configId: string, kind: VodKind, imdbId: string, excluded: string[] = []): Promise<VodItem[]> {
+    const { where, params } = baseWhere(configId, kind, excluded);
     const rows = await db().all<ItemRow>(
-        `SELECT ${ITEM_COLUMNS} FROM vod_items WHERE config_id = ? AND imdb_id = ? AND kind = ? ORDER BY name LIMIT 10`, [configId, imdbId, kind]);
+        `SELECT ${ITEM_COLUMNS} FROM vod_items WHERE ${where.join(' AND ')} AND imdb_id = ? ORDER BY name LIMIT 10`, [...params, imdbId]);
     return rows.map(fromItemRow);
+}
+
+/** Numero di titoli per categoria (per la scelta delle categorie da escludere). */
+export async function categoryCounts(configId: string): Promise<{ kind: VodKind; category: string; n: number }[]> {
+    const rows = await db().all<{ kind: VodKind; category: string; n: number }>(
+        `SELECT kind, category, COUNT(DISTINCT COALESCE(imdb_id, item_id)) AS n FROM vod_items
+         WHERE config_id = ? AND category IS NOT NULL GROUP BY kind, category`, [configId]);
+    return rows.map(r => ({ ...r, n: Number(r.n) }));
 }

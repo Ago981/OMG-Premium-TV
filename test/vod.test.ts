@@ -5,9 +5,10 @@ import type { AddressInfo } from 'net';
 import { closeDatabase, db, initDatabase } from '../src/db';
 import { env } from '../src/env';
 import { initAppSecret } from '../src/security/crypto';
-import { createConfig, deleteConfigs, getConfig, normalizeConfig, ConfigValidationError } from '../src/store/config-store';
+import { createConfig, deleteConfigs, getConfig, normalizeConfig, updateConfig, ConfigValidationError } from '../src/store/config-store';
 import { cleanTitle } from '../src/vod/tmdb';
-import { getVodState, matchPending, syncLists } from '../src/vod/vod-service';
+import { buildCategoryTree, usedCategories } from '../src/vod/categories';
+import { getVodState, listVod, matchPending, syncLists } from '../src/vod/vod-service';
 import { vodCatalog, vodMeta, vodStreams } from '../src/vod/vod-addon';
 import { catalogHandler, manifestHandler, streamHandler } from '../src/addon/handlers';
 
@@ -77,9 +78,14 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
             tmdbApiBase: `http://127.0.0.1:${(tmdb.address() as AddressInfo).port}`, tmdbRatePerSec: 1000
         });
 
-        await initDatabase(base);
-        await db().run('DROP SCHEMA IF EXISTS vod_test CASCADE');
-        await db().run('CREATE SCHEMA vod_test');
+        // Schema dedicato creato con un client a parte: initDatabase sul database base migrerebbe lo schema
+        // "public" in contemporanea con store.test.ts
+        const { default: pg } = await import('pg');
+        const admin = new pg.Client({ connectionString: base });
+        await admin.connect();
+        await admin.query('DROP SCHEMA IF EXISTS vod_test CASCADE');
+        await admin.query('CREATE SCHEMA vod_test');
+        await admin.end();
         await initDatabase(url);
         await initAppSecret();
     });
@@ -102,6 +108,25 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.equal(cleanTitle('|IT| Breaking Bad HD'), 'Breaking Bad');
     });
 
+    test('subcategories from parent_id or from a shared name prefix', () => {
+        const byParent = buildCategoryTree([
+            { category_id: 1, category_name: 'Film', parent_id: 0 },
+            { category_id: 2, category_name: 'Azione', parent_id: 1 },
+            { category_id: 3, category_name: 'Documentari', parent_id: 0 }
+        ]);
+        assert.equal(byParent.pathById.get('2'), 'Film › Azione');
+        assert.deepEqual(byParent.order, ['Film', 'Film › Azione', 'Documentari']);
+
+        const byPrefix = buildCategoryTree([
+            { category_id: 1, category_name: 'IT | Azione' },
+            { category_id: 2, category_name: '|IT| Commedia' },
+            { category_id: 3, category_name: 'EN | Drama' }
+        ]);
+        assert.equal(byPrefix.pathById.get('2'), 'IT › Commedia');
+        assert.equal(byPrefix.pathById.get('3'), 'EN | Drama', 'a prefix used once is not a group');
+        assert.deepEqual(usedCategories(byPrefix.order, new Set(['IT › Commedia'])), ['IT', 'IT › Commedia']);
+    });
+
     test('sync, IMDb linking, catalogs and streams', async () => {
         const cfg = normalizeConfig({
             source_type: 'xtream', xtream_server: server, xtream_username: USER, xtream_password: PASS,
@@ -119,11 +144,15 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
 
         const manifest = await manifestHandler(ctx);
         assert.deepEqual(manifest.types, ['tv', 'movie', 'series']);
-        const catalogs = manifest.catalogs as { type: string; id: string }[];
-        assert.ok(catalogs.some(c => c.type === 'movie') && catalogs.some(c => c.type === 'series'));
+        const catalogs = manifest.catalogs as { type: string; id: string; name: string }[];
+        assert.deepEqual(catalogs.map(c => [c.type, c.name]), [['tv', 'OMG+'], ['movie', 'OMG+'], ['series', 'OMG+']], 'same name as the channel catalog');
 
         const { metas } = await vodCatalog(ctx, 'movie', {}) as { metas: { id: string; name: string }[] };
         assert.deepEqual(metas.map(m => m.id), ['tt0068646', 'xtm:13'], 'newest first, the 4K copy merged under the same IMDb id');
+        assert.equal(metas[0].name, 'Il Padrino', 'provider prefixes and year removed from the shown title');
+        // Pagine da un titolo: lo skip di Stremio conta i titoli unici, non le righe
+        const page2 = await listVod(record.id, 'movie', { skip: 1, limit: 1 });
+        assert.deepEqual(page2.map(i => i.itemId), ['13']);
         const search = await catalogHandler(ctx, { search: 'sconosc' }, 'movie') as { metas: { id: string }[] };
         assert.deepEqual(search.metas.map(m => m.id), ['xtm:13']);
         const genre = await vodCatalog(ctx, 'movie', { genre: 'Film 4K' }) as { metas: { id: string }[] };
@@ -141,6 +170,15 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.deepEqual(meta.genres, ['Drama', 'Crime']);
         const own = await vodStreams(ctx, 'series', 'xts:70:1:1');
         assert.equal(own.streams[0].url, `${server}/series/mario/secret/701.mkv`);
+
+        // Categoria esclusa: sparisce da catalogo, filtri e stream della pagina IMDb
+        const hidden = await updateConfig(record.id, normalizeConfig({ ...cfg, vod_excluded: 'Film 4K' })) as typeof record;
+        const hctx = { record: hidden, baseUrl: 'http://addon' };
+        const options = ((await manifestHandler(hctx)).catalogs as { type: string; extra: { name: string; options?: string[] }[] }[])
+            .find(c => c.type === 'movie')?.extra[0].options;
+        assert.deepEqual(options, ['Film ITA']);
+        const onlyHd = await streamHandler(hctx, 'tt0068646', 'movie') as { streams: { url: string }[] };
+        assert.deepEqual(onlyHd.streams.map(s => s.url), [`${server}/movie/mario/secret/11.mkv`]);
 
         // Secondo giro: i titoli già abbinati non rifanno richieste a TMDB, quelli rimossi spariscono
         movies = movies.filter(m => m.stream_id !== 12);

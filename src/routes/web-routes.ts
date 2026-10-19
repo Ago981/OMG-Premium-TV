@@ -26,7 +26,8 @@ import type { UserConfig } from '../types';
 import { checkProxy, proxyLabel } from '../addon/proxy';
 import { getAccount, parseXtreamInput, XtreamAuthError } from '../playlist/xtream';
 import { checkTmdbKey, TmdbAuthError } from '../vod/tmdb';
-import { clearVod, enqueueVod, getVodState } from '../vod/vod-service';
+import { categoryCounts, clearVod, enqueueVod, getVodState } from '../vod/vod-service';
+import { SEP } from '../vod/categories';
 import { lastEgress, outboundProxyLabel } from '../http-client';
 import { render } from '../web/jsx';
 import { AdminPage } from '../web/pages/Admin';
@@ -267,6 +268,20 @@ api.get('/configs/:id/vod', wrap(async (req, res) => {
     const { status, categories, ...counts } = await getVodState(record.id);
     // "status" lo usa già il client per il codice HTTP
     res.json({ success: true, enabled: vodEnabled(record.config), vodStatus: status, ...counts, categories: categories.movie.length + categories.series.length });
+}));
+
+/** Categorie e sottocategorie con il numero di titoli (le madri contano anche quelli delle figlie). */
+api.get('/configs/:id/vod/categories', wrap(async (req, res) => {
+    const record = await authorizedConfig(req);
+    if (!record) return fail(res, 401, 'unauthorized');
+    const state = await getVodState(record.id);
+    const counts = await categoryCounts(record.id);
+    const tree = (kind: 'movie' | 'series') => state.categories[kind].map(path => ({
+        path,
+        depth: path.split(SEP).length - 1,
+        count: counts.filter(c => c.kind === kind && (c.category === path || c.category.startsWith(path + SEP))).reduce((a, c) => a + c.n, 0)
+    }));
+    res.json({ success: true, movie: tree('movie'), series: tree('series') });
 }));
 
 api.post('/configs/:id/vod', wrap(async (req, res) => {

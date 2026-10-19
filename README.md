@@ -24,7 +24,16 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ## 🔄 Changelog di OMG Premium TV
 
-### 🚀 Versione 8.3.0 (Attuale)
+### 🚀 Versione 8.4.0 (Attuale)
+
+Film e serie Xtream in Scopri:
+- I cataloghi Film e Serie hanno lo stesso nome del catalogo dei canali (`OMG+ · <nome configurazione>`): il tipo lo indica già Stremio.
+- **Sottocategorie** come filtri (da `parent_id` o dal prefisso comune, es. `IT | Azione` → `IT › Azione`); la categoria madre include le figlie.
+- **Categorie da nascondere**, scelte con le caselle nella pagina della configurazione: spariscono da cataloghi, ricerca e stream.
+- Titoli puliti in elenco (`IT - Il Padrino (1972)` → `Il Padrino`) e paginazione corretta: le copie dello stesso titolo sono unite nel database, ogni pagina ha titoli unici.
+- Avviso nella pagina della configurazione: installare (o reinstallare) l'addon quando la sincronizzazione è «Pronto», per avere i filtri delle categorie.
+
+### 🚀 Versione 8.3.0
 
 Film e serie TV dagli account **Xtream Codes**:
 - Nuova opzione **Includi film e serie TV**: cataloghi *Film* e *Serie* con le categorie del provider come filtri e la ricerca per titolo; schede con trama, cast ed episodi per stagione.

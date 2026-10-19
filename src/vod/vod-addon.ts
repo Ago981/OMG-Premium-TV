@@ -7,6 +7,8 @@ import type { Channel, StremioStream } from '../types';
 import { buildStreams } from '../addon/streams';
 import type { VodKind } from './tmdb';
 import { findByImdb, getVodItem, listVod, vodCategories, type VodItem } from './vod-service';
+import { isExcluded, leafOf, parseExcluded } from './categories';
+import { cleanTitle } from './tmdb';
 
 /**
  * Cataloghi, schede e stream di film e serie Xtream.
@@ -109,21 +111,25 @@ function list(v: string | undefined): string[] | undefined {
 
 // ---------------------------------------------------------------- manifest e catalogo
 
-export interface VodCatalogNames {
-    movies: string;
-    series: string;
+function excludedOf(record: ConfigRecord): string[] {
+    return parseExcluded(record.config.vod_excluded);
 }
 
-export async function vodManifestCatalogs(record: ConfigRecord, catalogId: string, names: VodCatalogNames) {
-    const cats = await vodCategories(record.id).catch(() => ({ movie: [], series: [] }));
+/**
+ * Cataloghi Film e Serie: stesso nome del catalogo dei canali (OMG+ · <nome configurazione>),
+ * il tipo (Film/Serie) lo indica già Stremio. Filtri = categorie e sottocategorie non escluse.
+ */
+export async function vodManifestCatalogs(record: ConfigRecord, catalogId: string, catalogName: string) {
+    const cats = await vodCategories(record.id).catch(() => ({ movie: [] as string[], series: [] as string[] }));
+    const excluded = excludedOf(record);
     const extra = (genres: string[]) => [
-        { name: 'genre', isRequired: false, options: genres },
+        { name: 'genre', isRequired: false, options: genres.filter(g => !isExcluded(g, excluded)) },
         { name: 'search', isRequired: false },
         { name: 'skip', isRequired: false }
     ];
     return [
-        { type: 'movie', id: `${catalogId}_movies`, name: names.movies, extra: extra(cats.movie) },
-        { type: 'series', id: `${catalogId}_series`, name: names.series, extra: extra(cats.series) }
+        { type: 'movie', id: `${catalogId}_movies`, name: catalogName, extra: extra(cats.movie) },
+        { type: 'series', id: `${catalogId}_series`, name: catalogName, extra: extra(cats.series) }
     ];
 }
 
@@ -132,27 +138,19 @@ function previewMeta(item: VodItem) {
     return {
         id: item.imdbId || `${prefix}${item.itemId}`,
         type: item.kind,
-        name: item.name,
+        name: cleanTitle(item.name) || item.name,
         poster: item.poster || undefined,
         posterShape: 'poster',
         releaseInfo: item.year ? String(item.year) : undefined,
         imdbRating: item.rating || undefined,
-        genres: item.category ? [item.category] : undefined
+        genres: item.category ? [leafOf(item.category)] : undefined
     };
 }
 
 export async function vodCatalog(ctx: Ctx, kind: VodKind, extra: Extra): Promise<{ metas: unknown[] }> {
-    const items = await listVod(ctx.record.id, kind, { genre: extra.genre, search: extra.search, skip: extra.skip, limit: PAGE });
-    // Più versioni dello stesso titolo (es. HD e 4K) hanno lo stesso ID IMDb: in elenco una sola volta
-    const seen = new Set<string>();
-    const metas = [];
-    for (const item of items) {
-        const meta = previewMeta(item);
-        if (seen.has(meta.id)) continue;
-        seen.add(meta.id);
-        metas.push(meta);
-    }
-    return { metas };
+    // Le versioni dello stesso titolo (HD, 4K...) sono già unite dalla query: pagine sempre piene
+    const items = await listVod(ctx.record.id, kind, { genre: extra.genre, search: extra.search, skip: extra.skip, limit: PAGE, excluded: excludedOf(ctx.record) });
+    return { metas: items.map(previewMeta) };
 }
 
 // ---------------------------------------------------------------- schede
@@ -161,7 +159,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
     const { record } = ctx;
     if (id.startsWith(MOVIE_PREFIX)) {
         const itemId = id.slice(MOVIE_PREFIX.length);
-        const item = await getVodItem(record.id, 'movie', itemId);
+        const item = await getVodItem(record.id, 'movie', itemId, excludedOf(record));
         if (!item) return { meta: null };
         const info = (await movieInfo(record, itemId))?.info || {};
         return {
@@ -173,7 +171,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
                 description: info.plot || info.description,
                 cast: list(info.cast || info.actors),
                 director: list(info.director),
-                genres: list(info.genre) || (item.category ? [item.category] : undefined),
+                genres: list(info.genre) || (item.category ? [leafOf(item.category)] : undefined),
                 runtime: info.duration,
                 released: isoDate(info.releasedate || info.release_date),
                 behaviorHints: { defaultVideoId: id }
@@ -182,7 +180,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
     }
     if (id.startsWith(SERIES_PREFIX)) {
         const seriesId = id.slice(SERIES_PREFIX.length).split(':')[0];
-        const item = await getVodItem(record.id, 'series', seriesId);
+        const item = await getVodItem(record.id, 'series', seriesId, excludedOf(record));
         if (!item) return { meta: null };
         const raw = await seriesInfo(record, seriesId);
         const info = raw?.info || {};
@@ -208,7 +206,7 @@ export async function vodMeta(ctx: Ctx, id: string): Promise<{ meta: unknown }> 
                 description: info.plot,
                 cast: list(info.cast),
                 director: list(info.director),
-                genres: list(info.genre) || (item.category ? [item.category] : undefined),
+                genres: list(info.genre) || (item.category ? [leafOf(item.category)] : undefined),
                 videos
             }
         };
@@ -247,10 +245,10 @@ export async function vodStreams(ctx: Ctx, type: string, id: string): Promise<{ 
     const episode = Number(e);
 
     if (id.startsWith(MOVIE_PREFIX)) {
-        const item = await getVodItem(record.id, 'movie', id.slice(MOVIE_PREFIX.length));
+        const item = await getVodItem(record.id, 'movie', id.slice(MOVIE_PREFIX.length), excludedOf(record));
         if (item) sources.push(movieSource(ctx, item));
     } else if (id.startsWith(SERIES_PREFIX)) {
-        const item = await getVodItem(record.id, 'series', base.slice(SERIES_PREFIX.length).split(':')[0]);
+        const item = await getVodItem(record.id, 'series', base.slice(SERIES_PREFIX.length).split(':')[0], excludedOf(record));
         if (item && season && episode) {
             const src = await episodeSource(ctx, item, season, episode);
             if (src) sources.push(src);
@@ -258,11 +256,11 @@ export async function vodStreams(ctx: Ctx, type: string, id: string): Promise<{ 
     } else if (/^tt\d+$/.test(base)) {
         if (type === 'series' || (season && episode)) {
             if (!season || !episode) return { streams: [] };
-            const items = await findByImdb(record.id, 'series', base);
+            const items = await findByImdb(record.id, 'series', base, excludedOf(record));
             const found = await Promise.all(items.map(item => episodeSource(ctx, item, season, episode)));
             sources.push(...found.filter((x): x is Source => !!x));
         } else {
-            sources.push(...(await findByImdb(record.id, 'movie', base)).map(item => movieSource(ctx, item)));
+            sources.push(...(await findByImdb(record.id, 'movie', base, excludedOf(record))).map(item => movieSource(ctx, item)));
         }
     }
     if (!sources.length) return { streams: [] };

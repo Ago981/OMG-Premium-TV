@@ -182,7 +182,7 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'xtream_vod', 'tmdb_api_key', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+    var CONFIG_FIELDS = ['label', 'country', 'source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'xtream_vod', 'tmdb_api_key', 'vod_excluded', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
         'aio_compatible', 'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 
@@ -377,6 +377,7 @@
         showStep(0);
 
         var vodTimer = null;
+        var vodCatsLoaded = false;
         var actions = {
             prev: function () { showStep(current - 1); },
             next: function () { if (stepValid(current)) showStep(current + 1); },
@@ -428,14 +429,81 @@
                     if (d.vodStatus === 'error' && d.lastError) parts.push(errorText(d.lastError));
                     out.textContent = parts.join(' · ');
                     out.className = d.vodStatus === 'error' ? 'small error-text' : 'small muted';
+                    var note = $('#vodInstallNote');
+                    if (note) note.classList.toggle('hidden', !busy && d.vodStatus !== 'idle');
+                    if (d.vodStatus === 'done' && !vodCatsLoaded) actions['vod-categories']();
                     clearTimeout(vodTimer);
                     if (busy) vodTimer = setTimeout(actions['vod-status'], 4000);
                 });
+            },
+            'vod-categories': function () {
+                var box = $('#vodCategories');
+                if (!box) return;
+                api('GET', '/api/configs/' + form.getAttribute('data-id') + '/vod/categories').then(function (d) {
+                    if (!d.success) return;
+                    vodCatsLoaded = true;
+                    var SEP = ' › ';
+                    var excluded = form.vod_excluded.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+                    var isOff = function (path) {
+                        return excluded.some(function (e) { return path === e || path.indexOf(e + SEP) === 0; });
+                    };
+                    box.innerHTML = '';
+                    [['movie', 'vod_movies'], ['series', 'vod_series']].forEach(function (k) {
+                        if (!d[k[0]].length) return;
+                        var h = document.createElement('h4');
+                        h.textContent = t(k[1]);
+                        box.appendChild(h);
+                        d[k[0]].forEach(function (c) {
+                            var label = document.createElement('label');
+                            label.className = 'check';
+                            label.style.paddingLeft = (c.depth * 22) + 'px';
+                            var cb = document.createElement('input');
+                            cb.type = 'checkbox';
+                            cb.value = c.path;
+                            cb.checked = isOff(c.path);
+                            var name = document.createElement('span');
+                            name.textContent = c.path.split(SEP).pop() + ' ';
+                            var count = document.createElement('span');
+                            count.className = 'count';
+                            count.textContent = '(' + c.count + ')';
+                            label.appendChild(cb);
+                            label.appendChild(name);
+                            label.appendChild(count);
+                            box.appendChild(label);
+                        });
+                    });
+                    if (!box.children.length) box.textContent = t('vod_no_categories');
+                    syncCats();
+                });
+                // Spuntare una categoria madre esclude anche le figlie: si salva solo il percorso più corto
+                function syncCats() {
+                    var boxes = Array.prototype.slice.call(box.querySelectorAll('input[type=checkbox]'));
+                    var chosen = [];
+                    boxes.forEach(function (cb) {
+                        var parentOff = chosen.some(function (p) { return cb.value.indexOf(p + ' › ') === 0; });
+                        cb.disabled = parentOff;
+                        if (parentOff) cb.checked = true;
+                        else if (cb.checked) chosen.push(cb.value);
+                    });
+                    form.vod_excluded.value = chosen.join('\n');
+                }
+                if (!box.getAttribute('data-bound')) {
+                    box.setAttribute('data-bound', '1');
+                    box.addEventListener('change', function (e) {
+                        var cb = e.target;
+                        // Togliendo la spunta a una madre si liberano anche le figlie
+                        if (!cb.checked) box.querySelectorAll('input[type=checkbox]').forEach(function (other) {
+                            if (other.value.indexOf(cb.value + ' › ') === 0) other.checked = false;
+                        });
+                        syncCats();
+                    });
+                }
             },
             'vod-refresh': function () {
                 api('POST', '/api/configs/' + form.getAttribute('data-id') + '/vod', {}).then(function (d) {
                     if (!d.success) { toast(errorText(d.message), 'error'); return; }
                     toast(t('vod_refresh_started'));
+                    vodCatsLoaded = false;
                     actions['vod-status']();
                 });
             },

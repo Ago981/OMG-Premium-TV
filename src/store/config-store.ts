@@ -1,6 +1,7 @@
 import { db } from '../db';
 import { hashPassword, newConfigId, sha256, verifyPassword } from '../security/crypto';
 import type { UserConfig } from '../types';
+import { parseExcluded } from '../vod/categories';
 
 export interface ConfigRecord {
     id: string;
@@ -33,6 +34,7 @@ export const DEFAULT_CONFIG: UserConfig = {
     xtream_format: 'm3u8',
     xtream_vod: false,
     tmdb_api_key: '',
+    vod_excluded: '',
     epg: '',
     epg_enabled: false,
     smart_epg: true,
@@ -92,9 +94,10 @@ export function normalizeConfig(input: Record<string, unknown>, opts: { strict?:
         if ((BOOL_KEYS as readonly string[]).includes(key)) {
             (out as unknown as Record<string, unknown>)[key] = toBool(input[key]);
         } else {
-            (out as unknown as Record<string, unknown>)[key] = cleanList(input[key]);
+            (out as unknown as Record<string, unknown>)[key] = cleanList(input[key], key === 'vod_excluded' ? 60000 : 4000);
         }
     }
+    out.vod_excluded = parseExcluded(out.vod_excluded).map(s => s.slice(0, 200)).join('\n');
     if (!['auto', 'mediaflow', 'easyproxy'].includes(out.proxy_type)) out.proxy_type = 'auto';
     if (out.source_type !== 'xtream') out.source_type = 'm3u';
     if (out.xtream_format !== 'ts') out.xtream_format = 'm3u8';

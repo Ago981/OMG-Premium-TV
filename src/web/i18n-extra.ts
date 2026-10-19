@@ -1,6 +1,11 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        vod_exclude_title: "Categories to hide",
+        vod_exclude_hint: "Ticked categories (and their subcategories) disappear from catalogs, search and streams. Save to apply; reinstall the addon to refresh the filter list in Stremio.",
+        vod_exclude_later: "After saving you can choose which categories to hide.",
+        vod_install_note: "Movies and series are still being prepared: wait for \"Ready\" below before installing, or reinstall the addon afterwards to get the category filters.",
+        vod_no_categories: "No categories yet.",
         xtream_vod: "Include movies and TV series",
         xtream_vod_hint: "Adds Movies and Series catalogs. With a TMDB key the titles are linked to their IMDb pages, so the stream also appears when you open a movie or episode from Stremio's own pages.",
         tmdb_api_key: "TMDB API key",
@@ -170,6 +175,11 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        vod_exclude_title: "Categorie da nascondere",
+        vod_exclude_hint: "Le categorie spuntate (e le loro sottocategorie) spariscono da cataloghi, ricerca e stream. Salva per applicare; reinstalla l'addon per aggiornare l'elenco dei filtri in Stremio.",
+        vod_exclude_later: "Dopo il salvataggio potrai scegliere quali categorie nascondere.",
+        vod_install_note: "Film e serie sono ancora in preparazione: attendi lo stato «Pronto» qui sotto prima di installare, oppure reinstalla l'addon dopo per avere i filtri delle categorie.",
+        vod_no_categories: "Nessuna categoria.",
         xtream_vod: "Includi film e serie TV",
         xtream_vod_hint: "Aggiunge i cataloghi Film e Serie. Con una chiave TMDB i titoli vengono collegati alle loro pagine IMDb, così lo stream compare anche aprendo un film o un episodio dalle pagine di Stremio.",
         tmdb_api_key: "Chiave API TMDB",
@@ -339,6 +349,11 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        vod_exclude_title: "Categorías a ocultar",
+        vod_exclude_hint: "Las categorías marcadas (y sus subcategorías) desaparecen de catálogos, búsqueda y streams. Guarda para aplicar; reinstala el addon para actualizar la lista de filtros en Stremio.",
+        vod_exclude_later: "Después de guardar podrás elegir qué categorías ocultar.",
+        vod_install_note: "Películas y series aún se están preparando: espera el estado «Listo» abajo antes de instalar, o reinstala el addon después para tener los filtros de categorías.",
+        vod_no_categories: "Sin categorías.",
         xtream_vod: "Incluir películas y series",
         xtream_vod_hint: "Añade los catálogos Películas y Series. Con una clave TMDB los títulos se vinculan a sus páginas de IMDb, así el stream aparece también al abrir una película o un episodio desde las páginas de Stremio.",
         tmdb_api_key: "Clave API de TMDB",
@@ -456,6 +471,11 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        vod_exclude_title: "Catégories à masquer",
+        vod_exclude_hint: "Les catégories cochées (et leurs sous-catégories) disparaissent des catalogues, de la recherche et des flux. Enregistrez pour appliquer ; réinstallez l'addon pour mettre à jour la liste des filtres dans Stremio.",
+        vod_exclude_later: "Après l'enregistrement, vous pourrez choisir les catégories à masquer.",
+        vod_install_note: "Les films et séries sont encore en préparation : attendez l'état « Prêt » ci-dessous avant d'installer, ou réinstallez l'addon ensuite pour avoir les filtres de catégories.",
+        vod_no_categories: "Aucune catégorie.",
         xtream_vod: "Inclure films et séries",
         xtream_vod_hint: "Ajoute les catalogues Films et Séries. Avec une clé TMDB, les titres sont liés à leurs pages IMDb : le flux apparaît aussi en ouvrant un film ou un épisode depuis les pages de Stremio.",
         tmdb_api_key: "Clé API TMDB",
