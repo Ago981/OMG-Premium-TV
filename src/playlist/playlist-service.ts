@@ -25,6 +25,7 @@ interface Entry {
     lastUsed: number;
     byId: Map<string, Channel>;
     byName: Map<string, Channel>;
+    byLoose: Map<string, Channel>;
 }
 
 const MEMORY_TTL_MS = 30 * 60 * 1000;
@@ -52,9 +53,22 @@ export function parseInterval(value: string, fallbackMs: number): number {
     return ms > 0 ? ms : fallbackMs;
 }
 
+/**
+ * Chiave "larga" per ritrovare un canale quando la playlist cambia leggermente l'id o il nome
+ * (es. "Vetrina Primafila Live" → "Vetrina Primafila Live HD", "rai1" → "rai1.it"): così i canali
+ * salvati in Stremio (preferiti, "continua a guardare") continuano a funzionare.
+ */
+export function looseKey(value: unknown): string {
+    return normalizeId(value)
+        .replace(/\.[a-z]{2,3}$/, '')
+        .replace(/[^a-z0-9]/g, '')
+        .replace(/(fhd|uhd|hd|sd|4k|hevc|h265|backup)+$/, '');
+}
+
 function buildEntry(key: string, data: PlaylistData, updatedAt: number, lastError: string | null): Entry {
     const byId = new Map<string, Channel>();
     const byName = new Map<string, Channel>();
+    const byLoose = new Map<string, Channel>();
     for (const ch of data.channels) {
         const id = normalizeId(ch.id.replace('tv|', ''));
         if (!byId.has(id)) byId.set(id, ch);
@@ -62,8 +76,9 @@ function buildEntry(key: string, data: PlaylistData, updatedAt: number, lastErro
         if (tvgId && !byId.has(tvgId)) byId.set(tvgId, ch);
         const name = normalizeId(ch.name);
         if (name && !byName.has(name)) byName.set(name, ch);
+        for (const k of [looseKey(id), looseKey(ch.name)]) if (k && !byLoose.has(k)) byLoose.set(k, ch);
     }
-    return { key, data, updatedAt, lastError, lastUsed: Date.now(), byId, byName };
+    return { key, data, updatedAt, lastError, lastUsed: Date.now(), byId, byName, byLoose };
 }
 
 type Fetcher = (url: string) => Promise<string>;
@@ -205,7 +220,7 @@ function handle(entry: Entry): PlaylistHandle {
         lastError: entry.lastError,
         getChannel(id: string) {
             const n = normalizeId(id);
-            return entry.byId.get(n) || entry.byName.get(n);
+            return entry.byId.get(n) || entry.byName.get(n) || entry.byLoose.get(looseKey(id));
         }
     };
 }

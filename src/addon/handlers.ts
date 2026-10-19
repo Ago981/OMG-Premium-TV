@@ -380,8 +380,9 @@ export async function streamHandler(ctx: AddonContext, id: string, type = 'tv'):
     const playlist = await getPlaylist(cfg, record.id);
     const ch = playlist.getChannel(channelId);
     if (!ch) {
-        logger.log(record.id, 'Channel not found:', channelId);
-        return { streams: [] };
+        logger.log(record.id, `Channel not found: ${channelId} (playlist: ${playlist.data.channels.length} channels${playlist.lastError ? `, last error: ${playlist.lastError}` : ''})`);
+        // Canale salvato in Stremio ma non più nella playlist: un messaggio invece di una lista vuota
+        return pseudoStream(cfg, false, t(playlist.data.channels.length ? 'channel_not_in_playlist' : 'playlist_unavailable', cfg));
     }
     const streams = await buildStreams(ch, { config: cfg, configId: record.id, baseUrl: ctx.baseUrl, resolver: rt.resolver });
     const meta = baseMeta(ch, cfg);

@@ -258,6 +258,7 @@ Ogni URL EPG viene scaricato **una volta sola** e condiviso tra tutte le configu
 | `EPG_REFRESH_HOURS` | `12` | intervallo di aggiornamento delle guide |
 | `EPG_FUTURE_DAYS` | `7` | giorni di programmazione conservati |
 | `ACTIVE_CONFIG_DAYS` | `14` | oltre questo periodo di inutilizzo le sorgenti EPG non vengono più aggiornate |
+| `PROXY_CHECK_TIMEOUT_MS` | `4000` | verifica rapida degli stream via proxy: solo indicativa, uno stream non verificato viene comunque offerto (⚠️) |
 | `TMDB_API_BASE` | `https://api.themoviedb.org/3` | API TMDB per film e serie Xtream |
 | `TMDB_RATE_PER_SEC` | `35` | richieste al secondo verso TMDB per ogni chiave utente |
 | `DATA_DIR` | `./data` | file di lavoro degli script Python |

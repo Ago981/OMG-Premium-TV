@@ -1,6 +1,8 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        channel_not_in_playlist: "This channel is no longer in the playlist: reopen it from the catalog.",
+        playlist_unavailable: "Playlist not available right now: try again in a few minutes.",
         vod_exclude_title: "Categories to hide",
         vod_exclude_hint: "Ticked categories (and their subcategories) disappear from catalogs, search and streams. Save to apply; reinstall the addon to refresh the filter list in Stremio.",
         vod_exclude_later: "After saving you can choose which categories to hide.",
@@ -175,6 +177,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        channel_not_in_playlist: "Questo canale non è più nella playlist: riaprilo dal catalogo.",
+        playlist_unavailable: "Playlist non disponibile al momento: riprova tra qualche minuto.",
         vod_exclude_title: "Categorie da nascondere",
         vod_exclude_hint: "Le categorie spuntate (e le loro sottocategorie) spariscono da cataloghi, ricerca e stream. Salva per applicare; reinstalla l'addon per aggiornare l'elenco dei filtri in Stremio.",
         vod_exclude_later: "Dopo il salvataggio potrai scegliere quali categorie nascondere.",
@@ -349,6 +353,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        channel_not_in_playlist: "Este canal ya no está en la playlist: vuelve a abrirlo desde el catálogo.",
+        playlist_unavailable: "Playlist no disponible ahora: inténtalo de nuevo en unos minutos.",
         vod_exclude_title: "Categorías a ocultar",
         vod_exclude_hint: "Las categorías marcadas (y sus subcategorías) desaparecen de catálogos, búsqueda y streams. Guarda para aplicar; reinstala el addon para actualizar la lista de filtros en Stremio.",
         vod_exclude_later: "Después de guardar podrás elegir qué categorías ocultar.",
@@ -471,6 +477,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        channel_not_in_playlist: "Cette chaîne n'est plus dans la playlist : rouvrez-la depuis le catalogue.",
+        playlist_unavailable: "Playlist indisponible pour le moment : réessayez dans quelques minutes.",
         vod_exclude_title: "Catégories à masquer",
         vod_exclude_hint: "Les catégories cochées (et leurs sous-catégories) disparaissent des catalogues, de la recherche et des flux. Enregistrez pour appliquer ; réinstallez l'addon pour mettre à jour la liste des filtres dans Stremio.",
         vod_exclude_later: "Après l'enregistrement, vous pourrez choisir les catégories à masquer.",

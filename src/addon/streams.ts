@@ -1,6 +1,6 @@
 import { appConfig } from '../config';
 import { env } from '../env';
-import { request } from '../http-client';
+import { hostOf, request } from '../http-client';
 import * as logger from '../logger';
 import { countryLangAbbr } from '../presets';
 import { encrypt } from '../security/crypto';
@@ -36,23 +36,31 @@ function pick(headers: StreamHeaders, ...names: string[]): string | undefined {
     return undefined;
 }
 
-async function proxyHealthy(proxyUrl: string, headers: StreamHeaders, logKey: string): Promise<boolean> {
+/**
+ * Verifica veloce dello stream via proxy, solo indicativa: il server la fa dal proprio IP (WARP),
+ * mentre il player la farà dal dispositivo dell'utente. Un timeout o un blocco del dominio del proxy
+ * verso WARP non significa che lo stream non funzioni, quindi l'esito non scarta mai lo stream.
+ */
+async function proxyHealthy(proxyUrl: string, input: StreamInput, logKey: string): Promise<boolean> {
     const cached = health.get(proxyUrl);
     if (cached && Date.now() - cached.at < HEALTH_TTL_MS) return cached.ok;
+    const headers = input.headers;
     const h: Record<string, string> = { 'User-Agent': pick(headers, 'User-Agent', 'user-agent') || appConfig.defaultUserAgent };
     const referer = pick(headers, 'referer', 'Referer', 'referrer', 'Referrer');
     if (referer) h.Referer = referer;
     const origin = pick(headers, 'origin', 'Origin');
     if (origin) h.Origin = origin;
     let ok = false;
+    let reason = '';
     try {
-        const res = await request(proxyUrl, { headers: h, timeoutMs: 3000 });
+        const res = await request(proxyUrl, { headers: h, timeoutMs: env.proxyCheckTimeoutMs });
         await res.body?.cancel();
         ok = res.status < 400;
-    } catch {
-        ok = false;
+        reason = `HTTP ${res.status}`;
+    } catch (e) {
+        reason = logger.errMsg(e);
     }
-    if (!ok) logger.warn(logKey, 'Proxy health check failed for stream:', proxyUrl.split('?')[0]);
+    if (!ok) logger.warn(logKey, `Proxy check failed (${reason}) for ${hostOf(input.url)} via ${proxyUrl.split('?')[0]}: stream offered anyway`);
     health.set(proxyUrl, { at: Date.now(), ok });
     if (health.size > 5000) health.clear();
     return ok;
@@ -118,22 +126,19 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
     if (!cfg.proxy || !cfg.proxy_pwd) return [];
 
     const proxyUrl = buildProxyUrl(kind, input.url, input.headers, cfg, input.clearkey) as string;
-    const ok = await proxyHealthy(proxyUrl, input.headers, ctx.configId);
-    if (ok) {
-        const type = input.clearkey ? 'DASH ClearKey' : streamType(input.url);
-        return [{
-            name: input.name,
-            title: `🌐 ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ${type}]`,
-            url: proxyUrl,
-            language: cfg.language,
-            behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
-        }];
-    }
-    // Con force_proxy (predefinito se c'è un proxy), non si offrono stream diretti per evitare di esporre l'IP dell'utente
-    if (cfg.force_proxy) return [];
-
-    // Se force_proxy è disattivato: si offre il link diretto di riserva (dall'IP dell'utente), segnalato con ⚠️
-    return [{ ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ✗ → direct]` }];
+    const ok = await proxyHealthy(proxyUrl, input, ctx.configId);
+    const type = input.clearkey ? 'DASH ClearKey' : streamType(input.url);
+    const proxied: StremioStream = {
+        name: input.name,
+        title: `${ok ? '🌐' : '⚠️'} ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ${type}${ok ? '' : ' · ?'}]`,
+        url: proxyUrl,
+        language: cfg.language,
+        behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
+    };
+    // Verifica fallita: lo stream via proxy si offre comunque (la verifica parte dal server, non dal player).
+    // Con «Solo proxy» (predefinito) niente link diretto, che esporrebbe l'IP dell'utente.
+    if (ok || cfg.force_proxy) return [proxied];
+    return [proxied, { ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ✗ → direct]` }];
 }
 
 /** Con un proxy configurato tutto passa dal proxy; senza, gli stream sono diretti (IP dell'utente). */

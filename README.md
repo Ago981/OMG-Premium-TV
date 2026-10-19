@@ -24,7 +24,13 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ## 🔄 Changelog di OMG Premium TV
 
-### 🚀 Versione 8.4.0 (Attuale)
+### 🚀 Versione 8.4.1 (Attuale)
+
+Correzioni sugli stream:
+- **Stream via proxy mai scartati**: la verifica rapida parte dal server (via WARP) e può fallire anche quando il player dal dispositivo funziona (timeout di EasyProxy, blocchi del dominio del proxy verso WARP). Ora lo stream via proxy viene sempre offerto, segnato con ⚠️ se la verifica non è andata; con «Solo proxy» resta escluso solo il link diretto.
+- **Canali salvati in Stremio**: se la playlist cambia leggermente id o nome di un canale (es. aggiunta di «HD» o del suffisso paese) il canale viene ritrovato; se non esiste più compare un messaggio invece di una lista vuota.
+
+### 🚀 Versione 8.4.0
 
 Film e serie Xtream in Scopri:
 - I cataloghi Film e Serie hanno lo stesso nome del catalogo dei canali (`OMG+ · <nome configurazione>`): il tipo lo indica già Stremio.

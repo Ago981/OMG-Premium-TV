@@ -1,3 +1,4 @@
+import { looseKey } from '../src/playlist/playlist-service';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { M3UParser, normalizeId, parseRemapping, NO_STREAM_NAME } from '../src/playlist/m3u-parser';
@@ -56,4 +57,10 @@ test('remapping rules change the channel id', () => {
     const p = new M3UParser(rules);
     p.add(PLAYLIST);
     assert.equal(p.result().channels[0].id, 'tv|rai1.epg');
+});
+
+test('loose key finds channels whose id or name changed slightly', () => {
+    assert.equal(looseKey('vetrinaprimafilalive'), looseKey('Vetrina Primafila Live HD'));
+    assert.equal(looseKey('rai1'), looseKey('rai1.it'));
+    assert.notEqual(looseKey('rai1'), looseKey('rai2'));
 });

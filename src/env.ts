@@ -82,6 +82,8 @@ export const env = {
     /** Se true il server non esce mai direttamente: senza OUTBOUND_PROXY funzionante le richieste falliscono. */
     outboundProxyRequired: bool('OUTBOUND_PROXY_REQUIRED', false),
     httpTimeoutMs: int('HTTP_TIMEOUT_MS', 60000),
+    /** Tempo massimo della verifica degli stream via proxy (solo indicativa, non scarta lo stream). */
+    proxyCheckTimeoutMs: int('PROXY_CHECK_TIMEOUT_MS', 4000),
     maxDownloadMb: int('MAX_DOWNLOAD_MB', 300),
 
     /** API TMDB (film e serie Xtream): ogni utente usa la propria chiave. */
