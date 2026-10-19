@@ -24,7 +24,15 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ## 🔄 Changelog di OMG Premium TV
 
-### 🚀 Versione 8.1.0 (Attuale)
+### 🚀 Versione 8.2.0 (Attuale)
+
+Nuova sorgente canali **Xtream Codes** (solo canali live):
+- Nel wizard si può scegliere come sorgente un **account Xtream Codes** (server, username, password) invece di un URL M3U; basta anche incollare il link `get.php` completo.
+- Pulsante **Verifica account** con stato, scadenza e connessioni dell'abbonamento.
+- Guida TV del provider (`xmltv.php`) attivata automaticamente se non indichi un EPG.
+- Tutte le richieste passano dal client dell'addon (WARP/proxy di uscita); credenziali mai visibili nelle risposte o nei log.
+
+### 🚀 Versione 8.1.0
 
 Miglioramenti a prestazioni, privacy dei proxy e compatibilità cataloghi:
 - **⚡ Risoluzione stream ultrarapida**: health check dei flussi tramite proxy ridotto a singolo tentativo con timeout a 3 secondi ed eseguito in parallelo (`Promise.all`). Tempi di risposta scesi da oltre 40s a ~1-3s.
@@ -35,12 +43,6 @@ Miglioramenti a prestazioni, privacy dei proxy e compatibilità cataloghi:
 - **📥 Download playlist diretto e affidabile**: le playlist M3U e i file di remapping vengono sempre scaricati direttamente dal server (o via WARP/outbound proxy), azzerando gli errori 502/WAF causati dai proxy HTTP esterni su file di grandi dimensioni.
 
 > ℹ️ *Nota sulla versione precedente*: la versione **7.0.0** (Node.js monolitica classica) rimane pienamente disponibile e consultabile sul branch dedicato [`7.0.0`](https://github.com/mccoy88f/OMG-Premium-TV/tree/7.0.0).
-
-#### 📡 Novità: account Xtream Codes
-- Nel wizard si può scegliere come sorgente un **account Xtream Codes** (server, username, password) invece di un URL M3U; basta anche incollare il link `get.php` completo.
-- Pulsante **Verifica account** con stato, scadenza e connessioni dell'abbonamento.
-- Guida TV del provider (`xmltv.php`) attivata automaticamente se non indichi un EPG.
-- Tutte le richieste passano dal client dell'addon (WARP/proxy di uscita); credenziali mai visibili nelle risposte o nei log.
 
 ### 🚀 Versione 8.0.0
 

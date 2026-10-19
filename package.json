@@ -1,6 +1,6 @@
 {
   "name": "omg-tv-stremio-addon",
-  "version": "8.1.0",
+  "version": "8.2.0",
   "description": "Un add-on per Stremio con playlist di canali M3U, multi-utente, con EPG centralizzato.",
   "main": "dist/index.js",
   "private": true,
