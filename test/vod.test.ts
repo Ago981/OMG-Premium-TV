@@ -168,7 +168,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.equal(metas[0].name, 'Il Padrino', 'provider prefixes and year removed from the shown title');
         const posters = (metas as unknown as { poster: string }[]).map(m => m.poster);
         assert.equal(posters[0], 'https://image.tmdb.org/t/p/w342/padrino-it.jpg', 'TMDB poster in the configuration language first');
-        assert.match(posters[1], /^https:\/\/dummyimage\.com\/.*Film\+Sconosciuto/, 'placeholder when no poster exists');
+        assert.match(posters[1], /^https:\/\/dummyimage\.com\/342x513\/9e1b32\/.*Film\+Sconosciuto/, 'movie placeholder with its own colour');
         const series = await vodCatalog(ctx, 'series', {}) as { metas: { poster: string }[] };
         assert.equal(series.metas[0].poster, 'https://img/bb.jpg', 'provider cover when TMDB has none');
         // Pagine da un titolo: lo skip di Stremio conta i titoli unici, non le righe
