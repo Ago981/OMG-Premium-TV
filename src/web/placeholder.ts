@@ -1,6 +1,6 @@
 /**
  * Segnaposto per canali, film e serie senza immagine, generati dal servizio esterno placehold.co
- * (nessun carico sul server dell'addon). Font Oswald, pieno e leggibile; il titolo va a capo da solo.
+ * (nessun carico sul server dell'addon). Font Montserrat; il titolo va a capo su più righe.
  */
 
 export type PlaceholderKind = 'tv' | 'movie' | 'series';
@@ -11,7 +11,7 @@ const STYLE: Record<PlaceholderKind, { size: string; color: string }> = {
     series: { size: '342x513', color: '0f6e7a' }
 };
 
-const FONT = 'oswald';
+const FONT = 'montserrat';
 
 /** Titolo su più righe (\n per placehold.co): parole raggruppate fino a circa `width` caratteri. */
 function lines(title: string, width: number): string {
