@@ -8,6 +8,7 @@ import { hasSource, vodEnabled, type ConfigRecord } from '../store/config-store'
 import type { Channel, StremioStream, UserConfig } from '../types';
 import { I18N } from '../web/i18n';
 import { buildStreams, maskUrl } from './streams';
+import { enqueueVod } from '../vod/vod-service';
 import { MOVIE_PREFIX, SERIES_PREFIX, vodCatalog, vodManifestCatalogs, vodMeta, vodStreams } from '../vod/vod-addon';
 
 const ITEMS_PER_PAGE = 100;
@@ -359,10 +360,12 @@ export async function streamHandler(ctx: AddonContext, id: string, type = 'tv'):
     }
     if (channelId === 'refreshm3u') {
         if (!hasSource(cfg)) return pseudoStream(cfg, false, t('error_m3u_missing', cfg));
+        // Film e serie (Xtream) fanno parte della sorgente: si aggiornano insieme alla playlist
+        if (vodEnabled(cfg)) enqueueVod(record.id);
         try {
             const p = await getPlaylist(cfg, record.id, { force: true });
             if (p.lastError) return pseudoStream(cfg, false, p.lastError);
-            return pseudoStream(cfg, true, t('m3u_refreshed', cfg));
+            return pseudoStream(cfg, true, t(vodEnabled(cfg) ? 'm3u_vod_refreshed' : 'm3u_refreshed', cfg));
         } catch (e) {
             return pseudoStream(cfg, false, logger.errMsg(e));
         }

@@ -422,7 +422,7 @@
                 api('GET', '/api/configs/' + form.getAttribute('data-id') + '/vod').then(function (d) {
                     if (!d.success || !d.enabled) { out.textContent = ''; return; }
                     var busy = ['queued', 'syncing', 'matching'].indexOf(d.vodStatus) >= 0;
-                    var parts = [t('vod_status_' + d.vodStatus)];
+                    var parts = [t('vod_status_label') + ': ' + t('vod_status_' + d.vodStatus)];
                     parts.push(t('vod_movies') + ': ' + d.movies, t('vod_series') + ': ' + d.series);
                     parts.push(t('vod_matched') + ': ' + d.matched + ' / ' + (d.matched + d.unmatched + d.pending));
                     if (d.updatedAt) parts.push(t('vod_updated') + ' ' + new Date(d.updatedAt).toLocaleString(lang));
@@ -431,6 +431,7 @@
                     out.className = d.vodStatus === 'error' ? 'small error-text' : 'small muted';
                     var note = $('#vodInstallNote');
                     if (note) note.classList.toggle('hidden', !busy && d.vodStatus !== 'idle');
+                    if (busy) vodCatsLoaded = false;
                     if (d.vodStatus === 'done' && !vodCatsLoaded) actions['vod-categories']();
                     clearTimeout(vodTimer);
                     if (busy) vodTimer = setTimeout(actions['vod-status'], 4000);
@@ -498,14 +499,6 @@
                         syncCats();
                     });
                 }
-            },
-            'vod-refresh': function () {
-                api('POST', '/api/configs/' + form.getAttribute('data-id') + '/vod', {}).then(function (d) {
-                    if (!d.success) { toast(errorText(d.message), 'error'); return; }
-                    toast(t('vod_refresh_started'));
-                    vodCatsLoaded = false;
-                    actions['vod-status']();
-                });
             },
             'use-country-playlist': function () {
                 var p = presetFor(countrySel.value);

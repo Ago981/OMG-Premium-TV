@@ -121,10 +121,10 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                     </Field>
                     <div className="row half-buttons">
                         <button type="button" className="secondary" data-action="tmdb-test" data-i18n="tmdb_test">Check key</button>
-                        {props.edit ? <button type="button" className="secondary" data-action="vod-refresh" data-i18n="vod_refresh">Update now</button> : null}
                     </div>
                     <div id="tmdbTestResult" className="small"></div>
                     {props.edit ? <div id="vodStatus" className="small muted"></div> : null}
+                    <small className="hint" data-i18n="vod_update_hint">Movies and series are updated together with the playlist: at the update interval and with the "Refresh M3U playlist" channel.</small>
                     <textarea name="vod_excluded" className="hidden">{props.c.vod_excluded}</textarea>
                     {props.edit ? (
                         <>

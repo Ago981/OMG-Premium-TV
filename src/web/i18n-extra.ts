@@ -1,6 +1,9 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        vod_status_label: "Movies and series",
+        vod_update_hint: "Movies and series are updated together with the playlist: at the update interval and with the \"Refresh M3U playlist\" channel.",
+        m3u_vod_refreshed: "M3U playlist refreshed, movies and series update started.",
         channel_not_in_playlist: "This channel is no longer in the playlist: reopen it from the catalog.",
         playlist_unavailable: "Playlist not available right now: try again in a few minutes.",
         vod_exclude_title: "Categories to hide",
@@ -18,8 +21,6 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         vod_series: "Series",
         vod_matched: "linked to IMDb",
         vod_updated: "updated",
-        vod_refresh: "Update now",
-        vod_refresh_started: "Movies and series update started",
         vod_status_idle: "Not synced yet",
         vod_status_queued: "Queued",
         vod_status_syncing: "Downloading lists…",
@@ -177,6 +178,9 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        vod_status_label: "Film e serie",
+        vod_update_hint: "Film e serie si aggiornano insieme alla playlist: all'intervallo di aggiornamento e con il canale «Aggiorna playlist M3U».",
+        m3u_vod_refreshed: "Playlist ricaricata, aggiornamento di film e serie avviato.",
         channel_not_in_playlist: "Questo canale non è più nella playlist: riaprilo dal catalogo.",
         playlist_unavailable: "Playlist non disponibile al momento: riprova tra qualche minuto.",
         vod_exclude_title: "Categorie da nascondere",
@@ -194,8 +198,6 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         vod_series: "Serie",
         vod_matched: "collegati a IMDb",
         vod_updated: "aggiornato",
-        vod_refresh: "Aggiorna ora",
-        vod_refresh_started: "Aggiornamento di film e serie avviato",
         vod_status_idle: "Non ancora sincronizzato",
         vod_status_queued: "In coda",
         vod_status_syncing: "Download delle liste…",
@@ -353,6 +355,9 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        vod_status_label: "Películas y series",
+        vod_update_hint: "Películas y series se actualizan junto con la playlist: en el intervalo de actualización y con el canal «Actualizar playlist M3U».",
+        m3u_vod_refreshed: "Playlist actualizada, actualización de películas y series iniciada.",
         channel_not_in_playlist: "Este canal ya no está en la playlist: vuelve a abrirlo desde el catálogo.",
         playlist_unavailable: "Playlist no disponible ahora: inténtalo de nuevo en unos minutos.",
         vod_exclude_title: "Categorías a ocultar",
@@ -370,8 +375,6 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         vod_series: "Series",
         vod_matched: "vinculados a IMDb",
         vod_updated: "actualizado",
-        vod_refresh: "Actualizar ahora",
-        vod_refresh_started: "Actualización de películas y series iniciada",
         vod_status_idle: "Aún no sincronizado",
         vod_status_queued: "En cola",
         vod_status_syncing: "Descargando listas…",
@@ -477,6 +480,9 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        vod_status_label: "Films et séries",
+        vod_update_hint: "Films et séries sont mis à jour avec la playlist : à l'intervalle de mise à jour et avec la chaîne « Actualiser la playlist M3U ».",
+        m3u_vod_refreshed: "Playlist mise à jour, mise à jour des films et séries lancée.",
         channel_not_in_playlist: "Cette chaîne n'est plus dans la playlist : rouvrez-la depuis le catalogue.",
         playlist_unavailable: "Playlist indisponible pour le moment : réessayez dans quelques minutes.",
         vod_exclude_title: "Catégories à masquer",
@@ -494,8 +500,6 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         vod_series: "Séries",
         vod_matched: "liés à IMDb",
         vod_updated: "mis à jour",
-        vod_refresh: "Mettre à jour",
-        vod_refresh_started: "Mise à jour des films et séries lancée",
         vod_status_idle: "Pas encore synchronisé",
         vod_status_queued: "En file d'attente",
         vod_status_syncing: "Téléchargement des listes…",

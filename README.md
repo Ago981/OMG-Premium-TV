@@ -29,6 +29,7 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 Correzioni sugli stream:
 - **Stream via proxy mai scartati**: la verifica rapida parte dal server (via WARP) e può fallire anche quando il player dal dispositivo funziona (timeout di EasyProxy, blocchi del dominio del proxy verso WARP). Ora lo stream via proxy viene sempre offerto, segnato con ⚠️ se la verifica non è andata; con «Solo proxy» resta escluso solo il link diretto.
 - **Canali salvati in Stremio**: se la playlist cambia leggermente id o nome di un canale (es. aggiunta di «HD» o del suffisso paese) il canale viene ritrovato; se non esiste più compare un messaggio invece di una lista vuota.
+- **Film e serie aggiornati con la playlist**: niente più pulsante «Aggiorna ora»; si aggiornano all'intervallo della playlist e con il canale «Aggiorna playlist M3U» della configurazione.
 - **Nomi puliti**: categorie e canali che iniziano e/o finiscono con 3 o più trattini (`-----DOCUMENTARI-----`, `-----RAI 1-----`) diventano `DOCUMENTARI` e `RAI 1`, sia nelle playlist M3U sia negli account Xtream (live, film e serie). Gli id dei canali non cambiano.
 
 ### 🚀 Versione 8.4.0

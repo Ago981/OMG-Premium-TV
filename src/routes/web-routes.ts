@@ -261,7 +261,7 @@ api.post('/tmdb-test', wrap(async (req, res) => {
     }
 }));
 
-/** Stato di film e serie (titoli, abbinamenti IMDb) e aggiornamento manuale. */
+/** Stato di film e serie (titoli, abbinamenti IMDb). */
 api.get('/configs/:id/vod', wrap(async (req, res) => {
     const record = await authorizedConfig(req);
     if (!record) return fail(res, 401, 'unauthorized');
@@ -282,14 +282,6 @@ api.get('/configs/:id/vod/categories', wrap(async (req, res) => {
         count: counts.filter(c => c.kind === kind && (c.category === path || c.category.startsWith(path + SEP))).reduce((a, c) => a + c.n, 0)
     }));
     res.json({ success: true, movie: tree('movie'), series: tree('series') });
-}));
-
-api.post('/configs/:id/vod', wrap(async (req, res) => {
-    const record = await authorizedConfig(req);
-    if (!record) return fail(res, 401, 'unauthorized');
-    if (!vodEnabled(record.config)) return fail(res, 400, 'vod_disabled');
-    enqueueVod(record.id);
-    res.json({ success: true });
 }));
 
 api.post('/configs/:id/login', wrap(async (req, res) => {
