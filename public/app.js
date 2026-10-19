@@ -182,7 +182,7 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+    var CONFIG_FIELDS = ['label', 'country', 'source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'xtream_vod', 'tmdb_api_key', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
         'aio_compatible', 'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 
@@ -308,12 +308,20 @@
                     el.required = on;
                 });
             });
+            // Film e serie: la chiave TMDB è obbligatoria solo se l'opzione è attiva
+            var vod = form.elements.xtream_vod;
+            if (vod) {
+                var vodOn = type === 'xtream' && vod.checked;
+                $('.vod-fields').classList.toggle('hidden', !vod.checked);
+                form.elements.tmdb_api_key.required = vodOn;
+            }
         }
 
         if (form.elements.source_type) {
             Array.prototype.forEach.call(form.querySelectorAll('input[name="source_type"]'), function (r) {
                 r.addEventListener('change', syncSource);
             });
+            if (form.elements.xtream_vod) form.elements.xtream_vod.addEventListener('change', syncSource);
             syncSource();
             form.addEventListener('omg:source', syncSource);
         }
@@ -349,7 +357,8 @@
             var rows = [
                 [t('country'), p ? flag(p.iso) + ' ' + countryName(p.iso) : '—'],
                 d.source_type === 'xtream'
-                    ? ['Xtream', (d.xtream_server.replace(/^https?:\/\//, '').split('/')[0] || '—') + ' · ' + d.xtream_username + ' · ' + d.xtream_format]
+                    ? ['Xtream', (d.xtream_server.replace(/^https?:\/\//, '').split('/')[0] || '—') + ' · ' + d.xtream_username + ' · ' + d.xtream_format +
+                        (d.xtream_vod ? ' · ' + t('summary_vod') : '')]
                     : ['M3U', d.m3u.split(',').filter(Boolean).length + ' URL'],
                 ['EPG', epgText],
                 ['Proxy', d.proxy && d.proxy_pwd ? (d.proxy_type === 'auto' ? t('proxy_type_auto') : d.proxy_type) + ' — ' + t('summary_proxy_all') : t('summary_proxy_none')],
@@ -367,6 +376,7 @@
         });
         showStep(0);
 
+        var vodTimer = null;
         var actions = {
             prev: function () { showStep(current - 1); },
             next: function () { if (stepValid(current)) showStep(current + 1); },
@@ -394,6 +404,39 @@
                     if (d.isTrial) parts.push('trial');
                     out.textContent = parts.join(' · ');
                     out.className = 'small ok-text';
+                });
+            },
+            'tmdb-test': function () {
+                var out = $('#tmdbTestResult');
+                out.textContent = t('loader_default');
+                out.className = 'small muted';
+                api('POST', '/api/tmdb-test', { tmdb_api_key: form.tmdb_api_key.value.trim() }).then(function (d) {
+                    out.textContent = d.success ? '✅ ' + t('tmdb_test_ok') : '❌ ' + errorText(d.message);
+                    out.className = d.success ? 'small ok-text' : 'small error-text';
+                });
+            },
+            'vod-status': function () {
+                var out = $('#vodStatus');
+                if (!out) return;
+                api('GET', '/api/configs/' + form.getAttribute('data-id') + '/vod').then(function (d) {
+                    if (!d.success || !d.enabled) { out.textContent = ''; return; }
+                    var busy = ['queued', 'syncing', 'matching'].indexOf(d.vodStatus) >= 0;
+                    var parts = [t('vod_status_' + d.vodStatus)];
+                    parts.push(t('vod_movies') + ': ' + d.movies, t('vod_series') + ': ' + d.series);
+                    parts.push(t('vod_matched') + ': ' + d.matched + ' / ' + (d.matched + d.unmatched + d.pending));
+                    if (d.updatedAt) parts.push(t('vod_updated') + ' ' + new Date(d.updatedAt).toLocaleString(lang));
+                    if (d.vodStatus === 'error' && d.lastError) parts.push(errorText(d.lastError));
+                    out.textContent = parts.join(' · ');
+                    out.className = d.vodStatus === 'error' ? 'small error-text' : 'small muted';
+                    clearTimeout(vodTimer);
+                    if (busy) vodTimer = setTimeout(actions['vod-status'], 4000);
+                });
+            },
+            'vod-refresh': function () {
+                api('POST', '/api/configs/' + form.getAttribute('data-id') + '/vod', {}).then(function (d) {
+                    if (!d.success) { toast(errorText(d.message), 'error'); return; }
+                    toast(t('vod_refresh_started'));
+                    actions['vod-status']();
                 });
             },
             'use-country-playlist': function () {
@@ -621,7 +664,7 @@
                 showLoader(t('loader_saving'));
                 api('PUT', base, data).then(function (d) {
                     hideLoader();
-                    if (d.success) toast(t('config_saved')); else fail(d.message);
+                    if (d.success) { toast(t('config_saved')); setTimeout(actions['vod-status'], 500); } else fail(d.message);
                 });
             }
         });
@@ -644,6 +687,10 @@
         if (mode === 'edit') {
             if ($('#pythonStatus') && form.elements.python_script_url && form.elements.python_script_url.value) actions['python-status']();
             if ($('#resolverStatus') && form.elements.resolver_script && form.elements.resolver_script.value) actions['resolver-status']();
+            if ($('#vodStatus') && form.elements.xtream_vod && form.elements.xtream_vod.checked) {
+                actions['vod-status']();
+                document.addEventListener('omg:language', actions['vod-status']);
+            }
         }
     }
 

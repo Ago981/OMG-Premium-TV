@@ -182,6 +182,29 @@ scadenza e connessioni dell'abbonamento.
 - Le credenziali restano salvate sul server: nel pannello admin compaiono solo host e username, nei log
   la query string è oscurata e, con il mascheramento attivo, gli URL degli stream non le contengono.
 
+### Film e serie TV
+
+Con l'opzione **Includi film e serie TV** l'addon aggiunge i cataloghi *Film* e *Serie* (categorie del
+provider come filtri, ricerca per titolo). Serve una **chiave API TMDB** dell'utente (gratuita su
+themoviedb.org → Impostazioni → API; va bene la chiave v3 o il Read Access Token v4).
+
+- Le liste del provider (`get_vod_streams`, `get_series`) vengono salvate nel DB per configurazione e
+  aggiornate con lo stesso intervallo della playlist (predefinito 12 ore). Schede ed episodi
+  (`get_vod_info`, `get_series_info`) si chiedono al provider quando servono, con 30 minuti di cache.
+- Con la chiave TMDB ogni titolo viene collegato al suo **ID IMDb**: dal `tmdb_id` fornito dal pannello
+  (1 richiesta) oppure cercando titolo e anno (2 richieste; si accetta solo un titolo identico). I titoli
+  collegati usano l'ID IMDb, quindi in Stremio si apre la scheda ufficiale e lo stream compare anche
+  aprendo il film o l'episodio dalle pagine di Stremio (Cinemeta). Gli altri restano visibili nei
+  cataloghi dell'addon con la scheda del provider.
+- Gli abbinamenti sono salvati **per utente**, non in una cache condivisa: ogni configurazione usa la
+  propria chiave e la propria quota TMDB, e cancellando la configurazione si cancellano anche i suoi titoli.
+  Ai refresh successivi si convertono solo i titoli nuovi; la prima volta, con circa 35 richieste al
+  secondo, un listino di 20.000 titoli richiede una decina di minuti.
+- Nella pagina della configurazione compaiono avanzamento e numero di titoli collegati, con il pulsante
+  "Aggiorna ora". Le sincronizzazioni sono eseguite una alla volta.
+- Gli stream di film ed episodi passano dalla stessa pipeline dei canali (proxy, "Solo proxy",
+  mascheramento). La chiave TMDB non compare nelle risposte dell'addon né nei log.
+
 Stalker (portali MAG) non è supportato.
 
 ## 5. Nuvio e altre app compatibili
@@ -223,6 +246,8 @@ Ogni URL EPG viene scaricato **una volta sola** e condiviso tra tutte le configu
 | `EPG_REFRESH_HOURS` | `12` | intervallo di aggiornamento delle guide |
 | `EPG_FUTURE_DAYS` | `7` | giorni di programmazione conservati |
 | `ACTIVE_CONFIG_DAYS` | `14` | oltre questo periodo di inutilizzo le sorgenti EPG non vengono più aggiornate |
+| `TMDB_API_BASE` | `https://api.themoviedb.org/3` | API TMDB per film e serie Xtream |
+| `TMDB_RATE_PER_SEC` | `35` | richieste al secondo verso TMDB per ogni chiave utente |
 | `DATA_DIR` | `./data` | file di lavoro degli script Python |
 
 ## 8. Aggiornare da una versione precedente

@@ -82,7 +82,12 @@ export const env = {
     /** Se true il server non esce mai direttamente: senza OUTBOUND_PROXY funzionante le richieste falliscono. */
     outboundProxyRequired: bool('OUTBOUND_PROXY_REQUIRED', false),
     httpTimeoutMs: int('HTTP_TIMEOUT_MS', 60000),
-    maxDownloadMb: int('MAX_DOWNLOAD_MB', 300)
+    maxDownloadMb: int('MAX_DOWNLOAD_MB', 300),
+
+    /** API TMDB (film e serie Xtream): ogni utente usa la propria chiave. */
+    tmdbApiBase: str('TMDB_API_BASE', 'https://api.themoviedb.org/3').replace(/\/+$/, ''),
+    /** Richieste al secondo verso TMDB per chiave (limite TMDB ~50). */
+    tmdbRatePerSec: int('TMDB_RATE_PER_SEC', 35)
 };
 
 export type Env = typeof env;

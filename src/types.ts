@@ -8,6 +8,10 @@ export interface UserConfig {
     xtream_username: string;
     xtream_password: string;
     xtream_format: 'm3u8' | 'ts';
+    /** Xtream: aggiunge i cataloghi Film e Serie TV (VOD del provider). */
+    xtream_vod: boolean;
+    /** Chiave API TMDB dell'utente: serve a collegare film/serie agli ID IMDb delle pagine Stremio. */
+    tmdb_api_key: string;
     epg: string;
     /** Abilita l'EPG. */
     epg_enabled: boolean;

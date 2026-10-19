@@ -19,12 +19,14 @@ import {
 } from '../security/http';
 import { createLimiter, loginLimiter } from '../security/rate-limit';
 import {
-    checkConfigPassword, ConfigValidationError, hasSource, createConfig, DEFAULT_CONFIG, deleteConfigs, getConfig, listConfigs,
+    checkConfigPassword, ConfigValidationError, hasSource, vodEnabled, createConfig, DEFAULT_CONFIG, deleteConfigs, getConfig, listConfigs,
     normalizeConfig, passwordVersion, setConfigPassword, updateConfig, type ConfigRecord
 } from '../store/config-store';
 import type { UserConfig } from '../types';
 import { checkProxy, proxyLabel } from '../addon/proxy';
 import { getAccount, parseXtreamInput, XtreamAuthError } from '../playlist/xtream';
+import { checkTmdbKey, TmdbAuthError } from '../vod/tmdb';
+import { clearVod, enqueueVod, getVodState } from '../vod/vod-service';
 import { lastEgress, outboundProxyLabel } from '../http-client';
 import { render } from '../web/jsx';
 import { AdminPage } from '../web/pages/Admin';
@@ -203,6 +205,7 @@ api.post('/configs', wrap(async (req, res) => {
         unlockConfig(req, res, record.id, passwordVersion(record));
         applySchedules(record);
         if (hasSource(config)) void getPlaylist(config, record.id).catch(() => undefined);
+        if (vodEnabled(config)) enqueueVod(record.id);
         logger.log(record.id, 'Configuration created');
         res.json({ success: true, id: record.id, manifestUrl: manifestUrl(req, record.id), configureUrl: `/c/${record.id}/configure?created=1` });
     } catch (e) {
@@ -244,6 +247,36 @@ api.post('/xtream-test', wrap(async (req, res) => {
     }
 }));
 
+/** Verifica una chiave TMDB (film e serie Xtream). */
+api.post('/tmdb-test', wrap(async (req, res) => {
+    if (limited(req, res, 'tmdb-test')) return;
+    const key = String(req.body?.tmdb_api_key || '').trim();
+    if (!/^[\w.-]{16,1000}$/.test(key)) return fail(res, 400, 'tmdb_key_invalid');
+    try {
+        await checkTmdbKey(key);
+        res.json({ success: true });
+    } catch (e) {
+        fail(res, e instanceof TmdbAuthError ? 401 : 502, e instanceof TmdbAuthError ? 'tmdb_key_invalid' : logger.errMsg(e));
+    }
+}));
+
+/** Stato di film e serie (titoli, abbinamenti IMDb) e aggiornamento manuale. */
+api.get('/configs/:id/vod', wrap(async (req, res) => {
+    const record = await authorizedConfig(req);
+    if (!record) return fail(res, 401, 'unauthorized');
+    const { status, categories, ...counts } = await getVodState(record.id);
+    // "status" lo usa già il client per il codice HTTP
+    res.json({ success: true, enabled: vodEnabled(record.config), vodStatus: status, ...counts, categories: categories.movie.length + categories.series.length });
+}));
+
+api.post('/configs/:id/vod', wrap(async (req, res) => {
+    const record = await authorizedConfig(req);
+    if (!record) return fail(res, 401, 'unauthorized');
+    if (!vodEnabled(record.config)) return fail(res, 400, 'vod_disabled');
+    enqueueVod(record.id);
+    res.json({ success: true });
+}));
+
 api.post('/configs/:id/login', wrap(async (req, res) => {
     if (limited(req, res, `cfg:${req.params.id}`)) return;
     const record = await getConfig(req.params.id);
@@ -277,6 +310,11 @@ api.put('/configs/:id', wrap(async (req, res) => {
         const sourcesChanged = (['source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'remapper_path', 'id_suffix', 'proxy', 'proxy_pwd'] as const)
             .some(k => config[k] !== record.config[k]);
         if (hasSource(config)) void getPlaylist(config, record.id, { force: sourcesChanged }).catch(() => undefined);
+        if (!vodEnabled(config)) {
+            if (vodEnabled(record.config)) await clearVod(record.id);
+        } else if (!vodEnabled(record.config) || (['xtream_server', 'xtream_username', 'xtream_password', 'tmdb_api_key', 'language'] as const).some(k => config[k] !== record.config[k])) {
+            enqueueVod(record.id);
+        }
         res.json({ success: true });
     } catch (e) {
         const msg = validationMessage(e);

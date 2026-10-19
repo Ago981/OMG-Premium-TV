@@ -24,7 +24,15 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ## 🔄 Changelog di OMG Premium TV
 
-### 🚀 Versione 8.2.0 (Attuale)
+### 🚀 Versione 8.3.0 (Attuale)
+
+Film e serie TV dagli account **Xtream Codes**:
+- Nuova opzione **Includi film e serie TV**: cataloghi *Film* e *Serie* con le categorie del provider come filtri e la ricerca per titolo; schede con trama, cast ed episodi per stagione.
+- Con la **chiave API TMDB** dell'utente (obbligatoria per questa opzione) ogni titolo viene collegato al suo ID IMDb: lo stream compare anche aprendo il film o l'episodio dalle pagine ufficiali di Stremio.
+- Abbinamenti salvati per singola configurazione (niente cache condivisa); ai refresh si convertono solo i titoli nuovi. Avanzamento visibile nella pagina della configurazione, con il pulsante «Aggiorna ora».
+- Stream di film ed episodi con la stessa pipeline dei canali: proxy, «Solo proxy», mascheramento, uscita via WARP.
+
+### 🚀 Versione 8.2.0
 
 Nuova sorgente canali **Xtream Codes** (solo canali live):
 - Nel wizard si può scegliere come sorgente un **account Xtream Codes** (server, username, password) invece di un URL M3U; basta anche incollare il link `get.php` completo.

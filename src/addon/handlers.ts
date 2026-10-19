@@ -4,10 +4,11 @@ import * as logger from '../logger';
 import { getPlaylist, type PlaylistHandle } from '../playlist/playlist-service';
 import { countryLangAbbr, countryPreset } from '../presets';
 import { getRuntime } from '../runtime';
-import { hasSource, type ConfigRecord } from '../store/config-store';
+import { hasSource, vodEnabled, type ConfigRecord } from '../store/config-store';
 import type { Channel, StremioStream, UserConfig } from '../types';
 import { I18N } from '../web/i18n';
 import { buildStreams, maskUrl } from './streams';
+import { MOVIE_PREFIX, SERIES_PREFIX, vodCatalog, vodManifestCatalogs, vodMeta, vodStreams } from '../vod/vod-addon';
 
 const ITEMS_PER_PAGE = 100;
 const PSEUDO_IDS = ['rigeneraplaylistpython', 'refreshm3u', 'refreshepg'];
@@ -109,25 +110,39 @@ export async function manifestHandler(ctx: AddonContext): Promise<Record<string,
     const m = appConfig.manifest;
     const addonId = record.legacy ? m.id : `${m.id}.${record.id}`;
     const catalogId = record.legacy ? m.catalogId : `${m.catalogId}_${record.id}`;
+    const catalogName = record.label && !record.legacy ? `${m.catalogName} · ${record.label}` : m.catalogName;
+    const vod = vodEnabled(record.config);
+    const vodCatalogs = vod
+        ? await vodManifestCatalogs(record, catalogId, {
+            movies: `${catalogName} · ${t('vod_movies', record.config)}`,
+            series: `${catalogName} · ${t('vod_series', record.config)}`
+        })
+        : [];
+    // Con film e serie: meta solo per i nostri ID, stream anche per gli ID IMDb (pagine di Cinemeta)
+    const resources = vod
+        ? ['catalog',
+            { name: 'meta', types: ['tv', 'movie', 'series'], idPrefixes: ['tv', MOVIE_PREFIX, SERIES_PREFIX] },
+            { name: 'stream', types: ['tv', 'movie', 'series'], idPrefixes: ['tv', MOVIE_PREFIX, SERIES_PREFIX, 'tt'] }]
+        : ['stream', 'catalog', 'meta'];
     return {
         id: addonId,
         version: m.version,
         name: record.label && !record.legacy ? `${m.name} · ${record.label}` : m.name,
         description: m.description,
         logo: m.logo,
-        resources: ['stream', 'catalog', 'meta'],
-        types: ['tv'],
-        idPrefixes: ['tv'],
+        resources,
+        types: vod ? ['tv', 'movie', 'series'] : ['tv'],
+        ...(vod ? {} : { idPrefixes: ['tv'] }),
         catalogs: [{
             type: 'tv',
             id: catalogId,
-            name: record.label && !record.legacy ? `${m.catalogName} · ${record.label}` : m.catalogName,
+            name: catalogName,
             extra: [
                 { name: 'genre', isRequired: false, options: [...new Set([...genres, SETTINGS_GENRE])] },
                 { name: 'search', isRequired: false },
                 { name: 'skip', isRequired: false }
             ]
-        }],
+        }, ...vodCatalogs],
         behaviorHints: {
             configurable: true,
             configurationURL: `${baseUrl}/c/${record.id}/configure`,
@@ -222,8 +237,9 @@ function isSettingsChannel(ch: Channel): boolean {
     return ch.genre.some(g => g === '~SETTINGS~' || g === 'Settings' || g === SETTINGS_GENRE);
 }
 
-export async function catalogHandler(ctx: AddonContext, extra: CatalogExtra): Promise<{ metas: unknown[] }> {
+export async function catalogHandler(ctx: AddonContext, extra: CatalogExtra, type = 'tv'): Promise<{ metas: unknown[] }> {
     const cfg = ctx.record.config;
+    if (type === 'movie' || type === 'series') return vodEnabled(cfg) ? vodCatalog(ctx, type, extra) : { metas: [] };
     if (!hasSource(cfg)) return { metas: [] };
     const playlist = await getPlaylist(cfg, ctx.record.id);
     const skip = extra.skip || 0;
@@ -253,6 +269,7 @@ function stripPrefix(id: string): string {
 
 export async function metaHandler(ctx: AddonContext, id: string): Promise<{ meta: unknown }> {
     const cfg = ctx.record.config;
+    if (id.startsWith(MOVIE_PREFIX) || id.startsWith(SERIES_PREFIX)) return vodEnabled(cfg) ? vodMeta(ctx, id) : { meta: null };
     const channelId = stripPrefix(id);
     if (PSEUDO_IDS.includes(channelId)) {
         const info = PSEUDO_META[channelId];
@@ -327,9 +344,12 @@ function pseudoStream(cfg: UserConfig, success: boolean, title: string) {
     };
 }
 
-export async function streamHandler(ctx: AddonContext, id: string): Promise<{ streams: StremioStream[] | unknown[] }> {
+export async function streamHandler(ctx: AddonContext, id: string, type = 'tv'): Promise<{ streams: StremioStream[] | unknown[] }> {
     const { record } = ctx;
     const cfg = record.config;
+    if (type === 'movie' || type === 'series' || id.startsWith(MOVIE_PREFIX) || id.startsWith(SERIES_PREFIX) || /^tt\d+/.test(id)) {
+        return vodEnabled(cfg) ? vodStreams(ctx, type, id) : { streams: [] };
+    }
     const channelId = stripPrefix(id);
     const rt = getRuntime(record.id);
 

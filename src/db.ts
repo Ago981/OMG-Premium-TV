@@ -91,7 +91,47 @@ const SCHEMA_V1 = `
     CREATE INDEX IF NOT EXISTS idx_epg_programs_stop ON epg_programs(stop_time);
 `;
 
-const MIGRATIONS: string[] = [SCHEMA_V1];
+/**
+ * Film e serie degli account Xtream, per configurazione. Gli ID IMDb ricavati con la chiave TMDB
+ * dell'utente restano nelle sue righe (nessuna cache condivisa) e spariscono con la configurazione.
+ * match_state: 0 da abbinare, 1 abbinato, 2 nessun ID IMDb trovato.
+ */
+const SCHEMA_V2 = `
+    CREATE TABLE IF NOT EXISTS vod_items (
+        config_id TEXT NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        name_key TEXT NOT NULL,
+        poster TEXT,
+        year INTEGER,
+        rating TEXT,
+        category TEXT,
+        ext TEXT,
+        added BIGINT,
+        tmdb_id TEXT,
+        imdb_id TEXT,
+        match_state SMALLINT NOT NULL DEFAULT 0,
+        seen_at BIGINT NOT NULL,
+        PRIMARY KEY (config_id, kind, item_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_vod_imdb ON vod_items(config_id, imdb_id);
+    CREATE INDEX IF NOT EXISTS idx_vod_pending ON vod_items(config_id, match_state);
+    CREATE INDEX IF NOT EXISTS idx_vod_list ON vod_items(config_id, kind, added);
+
+    CREATE TABLE IF NOT EXISTS vod_state (
+        config_id TEXT PRIMARY KEY REFERENCES configs(id) ON DELETE CASCADE,
+        source TEXT NOT NULL,
+        status TEXT NOT NULL,
+        movies INTEGER NOT NULL DEFAULT 0,
+        series INTEGER NOT NULL DEFAULT 0,
+        categories TEXT,
+        updated_at BIGINT,
+        last_error TEXT
+    );
+`;
+
+const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2];
 
 function splitStatements(sql: string): string[] {
     return sql

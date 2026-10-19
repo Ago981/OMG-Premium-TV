@@ -69,7 +69,7 @@ function InstallBox(props: { manifestUrl: string; id: string; created?: boolean 
     );
 }
 
-function SourceStep(props: { c: UserConfig; label?: string }) {
+function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
     const locked = !appConfig.customized;
     return (
         <Step index={0}>
@@ -112,6 +112,23 @@ function SourceStep(props: { c: UserConfig; label?: string }) {
                     <span id="xtreamTestResult" className="small"></span>
                 </div>
                 <small className="hint" data-i18n="xtream_epg_hint">The provider's TV guide (xmltv.php) is used automatically when the EPG field is empty.</small>
+                <Check name="xtream_vod" checked={props.c.xtream_vod} labelKey="xtream_vod" label="Include movies and TV series" />
+                <div className="vod-fields">
+                    <small className="hint" data-i18n="xtream_vod_hint">Adds Movies and Series catalogs. With a TMDB key the titles are linked to their IMDb pages, so the stream also appears when you open a movie from Stremio's own pages.</small>
+                    <Field labelKey="tmdb_api_key" label="TMDB API key" hintKey="tmdb_key_hint" hint="Free at themoviedb.org → Settings → API: API key (v3) or Read Access Token (v4). Used only for your titles.">
+                        <input type="password" name="tmdb_api_key" value={props.c.tmdb_api_key} autocomplete="off" />
+                    </Field>
+                    <div className="row">
+                        <button type="button" className="secondary" data-action="tmdb-test" data-i18n="tmdb_test">Check key</button>
+                        <span id="tmdbTestResult" className="small"></span>
+                    </div>
+                    {props.edit ? (
+                        <div className="row">
+                            <span id="vodStatus" className="small muted"></span>
+                            <button type="button" className="secondary" data-action="vod-refresh" data-i18n="vod_refresh">Update now</button>
+                        </div>
+                    ) : null}
+                </div>
             </div>
             <Field labelKey="config_label" label="Name (optional)" hintKey="config_label_hint" hint="Only for you: shown in the addon name.">
                 <input type="text" name="label" maxlength={80} value={props.label || ''} />
@@ -338,7 +355,7 @@ export function ConfigEditorPage(props: EditorProps) {
                     ))}
                 </nav>
                 <form id="configForm" className="form wizard" data-mode={props.mode} data-id={props.id || ''} novalidate>
-                    <SourceStep c={c} label={props.label} />
+                    <SourceStep c={c} label={props.label} edit={!isNew} />
                     <EpgStep c={c} />
                     <ProxyStep c={c} masking={props.streamMaskingAvailable} />
                     <AdvancedStep c={c} mode={props.mode} pythonAllowed={props.pythonAllowed} />

@@ -74,9 +74,10 @@ export function credentialsOf(cfg: Pick<UserConfig, 'xtream_server' | 'xtream_us
     return parseXtreamInput(cfg.xtream_server, cfg.xtream_username, cfg.xtream_password);
 }
 
-function apiUrl(c: XtreamCredentials, action?: string): string {
+function apiUrl(c: XtreamCredentials, action?: string, extra: Record<string, string> = {}): string {
     const params = new URLSearchParams({ username: c.username, password: c.password });
     if (action) params.set('action', action);
+    for (const [k, v] of Object.entries(extra)) params.set(k, v);
     return `${c.server}/player_api.php?${params}`;
 }
 
@@ -86,6 +87,17 @@ export function xmltvUrl(c: XtreamCredentials): string {
 
 export function streamUrl(c: XtreamCredentials, streamId: string | number, ext: string): string {
     return `${c.server}/live/${encodeURIComponent(c.username)}/${encodeURIComponent(c.password)}/${encodeURIComponent(String(streamId))}.${ext}`;
+}
+
+/** URL di riproduzione di un film o di un episodio (/movie/... o /series/...). */
+export function vodUrl(c: XtreamCredentials, kind: 'movie' | 'series', id: string | number, ext: string): string {
+    const safeExt = /^[a-z0-9]{2,5}$/i.test(ext) ? ext : 'mp4';
+    return `${c.server}/${kind}/${encodeURIComponent(c.username)}/${encodeURIComponent(c.password)}/${encodeURIComponent(String(id))}.${safeExt}`;
+}
+
+/** Chiamata generica a player_api.php (usata per film e serie). */
+export function xtreamCall<T>(c: XtreamCredentials, action: string, extra: Record<string, string> = {}): Promise<T> {
+    return getJson<T>(apiUrl(c, action, extra));
 }
 
 async function getJson<T>(url: string): Promise<T> {

@@ -31,6 +31,8 @@ export const DEFAULT_CONFIG: UserConfig = {
     xtream_username: '',
     xtream_password: '',
     xtream_format: 'm3u8',
+    xtream_vod: false,
+    tmdb_api_key: '',
     epg: '',
     epg_enabled: false,
     smart_epg: true,
@@ -52,7 +54,7 @@ export const DEFAULT_CONFIG: UserConfig = {
     country: ''
 };
 
-const BOOL_KEYS = ['epg_enabled', 'smart_epg', 'resolver_enabled', 'mask_streams', 'force_proxy', 'aio_compatible'] as const;
+const BOOL_KEYS = ['xtream_vod', 'epg_enabled', 'smart_epg', 'resolver_enabled', 'mask_streams', 'force_proxy', 'aio_compatible'] as const;
 const INTERVAL_RE = /^\d{1,2}:\d{2}$/;
 
 function toBool(v: unknown): boolean {
@@ -109,8 +111,15 @@ export function normalizeConfig(input: Record<string, unknown>, opts: { strict?:
     if (out.source_type === 'xtream') {
         if (!out.xtream_server || !validUrlList(out.xtream_server)) throw new ConfigValidationError('invalid_url:xtream_server');
         if (!out.xtream_username || !out.xtream_password) throw new ConfigValidationError('xtream_credentials_required');
+        if (out.xtream_vod && !out.tmdb_api_key) throw new ConfigValidationError('tmdb_key_required');
     }
+    if (out.tmdb_api_key && !/^[\w.-]{16,1000}$/.test(out.tmdb_api_key)) throw new ConfigValidationError('tmdb_key_invalid');
     return out;
+}
+
+/** Film e serie del provider Xtream attivi (account Xtream completo, opzione e chiave TMDB). */
+export function vodEnabled(cfg: UserConfig): boolean {
+    return cfg.source_type === 'xtream' && cfg.xtream_vod && !!cfg.tmdb_api_key && hasSource(cfg);
 }
 
 /** La configurazione ha una sorgente di canali (M3U o account Xtream). */

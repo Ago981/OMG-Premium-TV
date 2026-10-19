@@ -52,9 +52,9 @@ async function handle(record: ConfigRecord, req: Request, res: Response, resourc
     try {
         if (resource === 'manifest') return sendJson(res, await manifestHandler(ctx));
         if (!parsed) return void res.status(404).json({ error: 'Not found' });
-        if (resource === 'catalog') return sendJson(res, await catalogHandler(ctx, parseExtra(parsed.extra)), 60);
+        if (resource === 'catalog') return sendJson(res, await catalogHandler(ctx, parseExtra(parsed.extra), parsed.type), 60);
         if (resource === 'meta') return sendJson(res, await metaHandler(ctx, parsed.id), 60);
-        if (resource === 'stream') return sendJson(res, await streamHandler(ctx, parsed.id));
+        if (resource === 'stream') return sendJson(res, await streamHandler(ctx, parsed.id, parsed.type));
     } catch (e) {
         logger.error(record.id, `Error handling ${resource}:`, logger.errMsg(e));
         res.status(500).json({ error: 'Internal server error' });

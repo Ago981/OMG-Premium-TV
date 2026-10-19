@@ -10,6 +10,7 @@ import { restoreSchedules } from './runtime';
 import { initAdminPassword } from './security/admin';
 import { initAppSecret } from './security/crypto';
 import { listConfigs } from './store/config-store';
+import { refreshDueVod } from './vod/vod-service';
 
 function every(ms: number, task: () => Promise<unknown> | void, name: string): void {
     setInterval(() => {
@@ -41,7 +42,9 @@ async function main(): Promise<void> {
     every(60 * 60 * 1000, () => epg.cleanup(), 'EPG cleanup');
     every(5 * 60 * 1000, () => sweepMemory(), 'Playlist memory sweep');
     every(6 * 60 * 60 * 1000, async () => gcPlaylists((await listConfigs()).map(r => r.config)), 'Playlist GC');
+    every(10 * 60 * 1000, () => refreshDueVod(), 'VOD refresh');
     setTimeout(() => void epg.refreshStaleSources().catch(() => undefined), 10000).unref();
+    setTimeout(() => void refreshDueVod().catch(() => undefined), 30000).unref();
 
     // Da dove esce il server: con OUTBOUND_PROXY verso WARP deve risultare warp=on
     const reportEgress = async () => {
