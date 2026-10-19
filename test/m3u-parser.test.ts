@@ -76,3 +76,26 @@ test('runs of 3+ dashes around group and channel names are removed', () => {
     assert.deepEqual(tg.genre, ['Sport - Calcio']);
     assert.equal(stripDashes('---'), '---', 'a name made only of dashes is left as is');
 });
+
+test('channels sharing a tvg-id are merged only when they are the same channel', () => {
+    const p = new M3UParser();
+    p.add([
+        '#EXTM3U',
+        '#EXTINF:-1 tvg-id="SkyCinemaUno.it",Sky Cinema Uno FHD', 'http://x/1.m3u8',
+        '#EXTINF:-1 tvg-id="SkyCinemaUno.it",Sky Cinema Uno HD', 'http://x/2.m3u8',
+        '#EXTINF:-1 tvg-id="SkyCinemaUno.it",Sky Sport Max HD', 'http://x/3.m3u8',
+        '#EXTINF:-1 tvg-id="SkyCinemaUno.it",Sky Sport Max FHD', 'http://x/4.m3u8',
+        ''
+    ].join('\n'));
+    const [uno, max] = p.result().channels;
+    assert.equal(p.result().channels.length, 2);
+    assert.equal(uno.id, 'tv|skycinemauno.it', 'the first channel keeps its id');
+    assert.deepEqual(uno.streamInfo.urls.map(u => u.url), ['http://x/1.m3u8', 'http://x/2.m3u8']);
+    assert.equal(max.name, 'Sky Sport Max HD');
+    assert.deepEqual(max.streamInfo.urls.map(u => u.url), ['http://x/3.m3u8', 'http://x/4.m3u8']);
+
+    // Con il remapping l'unione resta una scelta esplicita dell'utente
+    const r = new M3UParser(new Map([['a', 'same'], ['b', 'same']]));
+    r.add('#EXTM3U\n#EXTINF:-1 tvg-id="a",Canale A\nhttp://x/a\n#EXTINF:-1 tvg-id="b",Canale B\nhttp://x/b\n');
+    assert.equal(r.result().channels.length, 1);
+});

@@ -19,6 +19,18 @@ export function stripDashes(value: string): string {
     return value.replace(/^\s*[-–—]{3,}\s*/, '').replace(/\s*[-–—]{3,}\s*$/, '').trim() || value.trim();
 }
 
+/**
+ * Chiave "larga" di un canale: senza suffisso paese, simboli e tag di qualità finali.
+ * Serve a ritrovare un canale quando la playlist cambia leggermente id o nome
+ * ("Vetrina Primafila Live" → "… HD", "rai1" → "rai1.it") e a capire se due voci sono lo stesso canale.
+ */
+export function looseKey(value: unknown): string {
+    return normalizeId(value)
+        .replace(/\.[a-z]{2,3}$/, '')
+        .replace(/[^a-z0-9]/g, '')
+        .replace(/(fhd|uhd|hd|sd|4k|hevc|h265|backup)+$/, '');
+}
+
 function cleanChannelName(name: string): string {
     return name.replace(/[([].*?[)\]]/g, '').trim().toLowerCase().replace(/\s+/g, '');
 }
@@ -143,6 +155,8 @@ export class M3UParser {
     private channels = new Map<string, Channel>();
     private genres: string[] = [];
     private epgUrls = new Set<string>();
+    /** Canali separati da un tvg-id condiviso: chiave larga del nome → id usato */
+    private split = new Map<string, string>();
 
     constructor(private readonly remap: Map<string, string> = new Map(), private readonly idSuffix = '') {}
 
@@ -162,8 +176,19 @@ export class M3UParser {
                 current.clearkey = clearkey;
             } else if (current && (line.startsWith('http') || line.toLowerCase() === 'null')) {
                 const normalized = normalizeId(current.tvg.id);
-                const id = normalizeId(this.remap.get(normalized) || normalized);
+                const remapped = this.remap.get(normalized);
+                let id = normalizeId(remapped || normalized);
                 let channel = this.channels.get(id);
+                // Stesso tvg-id ma canale diverso (playlist che riusano lo stesso id per più canali, es. tutti
+                // i Sky con l'id di Sky Cinema Uno): si uniscono solo le voci dello stesso canale (HD/FHD...),
+                // le altre diventano canali a sé con l'id ricavato dal nome. Il remapping resta una scelta esplicita.
+                const name = (current.tvg.name || current.name).replace(/\s*\(.*?\)\s*/g, '').trim();
+                if (channel && !remapped && looseKey(channel.name) !== looseKey(name)) {
+                    // Varianti dello stesso canale separato (HD, FHD...) finiscono insieme
+                    id = this.split.get(looseKey(name)) || normalizeId(cleanChannelName(name) + (this.idSuffix ? `.${this.idSuffix}` : ''));
+                    this.split.set(looseKey(name), id);
+                    channel = this.channels.get(id);
+                }
                 if (!channel) {
                     channel = createChannel(current, id);
                     this.channels.set(id, channel);

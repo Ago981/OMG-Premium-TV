@@ -7,7 +7,9 @@ import * as logger from '../logger';
 import { GENERATED_SCHEME, generatedPlaylistPath } from '../python/paths';
 import { sha256 } from '../security/crypto';
 import type { Channel, PlaylistData, UserConfig } from '../types';
-import { M3UParser, normalizeId, parseRemapping } from './m3u-parser';
+import { looseKey, M3UParser, normalizeId, parseRemapping } from './m3u-parser';
+
+export { looseKey };
 import { hasSource } from '../store/config-store';
 import { xtreamSourceLabel, xtreamToM3U } from './xtream';
 
@@ -53,17 +55,6 @@ export function parseInterval(value: string, fallbackMs: number): number {
     return ms > 0 ? ms : fallbackMs;
 }
 
-/**
- * Chiave "larga" per ritrovare un canale quando la playlist cambia leggermente l'id o il nome
- * (es. "Vetrina Primafila Live" → "Vetrina Primafila Live HD", "rai1" → "rai1.it"): così i canali
- * salvati in Stremio (preferiti, "continua a guardare") continuano a funzionare.
- */
-export function looseKey(value: unknown): string {
-    return normalizeId(value)
-        .replace(/\.[a-z]{2,3}$/, '')
-        .replace(/[^a-z0-9]/g, '')
-        .replace(/(fhd|uhd|hd|sd|4k|hevc|h265|backup)+$/, '');
-}
 
 function buildEntry(key: string, data: PlaylistData, updatedAt: number, lastError: string | null): Entry {
     const byId = new Map<string, Channel>();
