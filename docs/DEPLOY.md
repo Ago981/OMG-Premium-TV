@@ -15,9 +15,12 @@ pannello di amministrazione e, facoltativamente, Cloudflare davanti al server pe
 ```bash
 git clone https://github.com/mccoy88f/OMG-Premium-TV.git
 cd OMG-Premium-TV
-cp .env.example .env      # compila PUBLIC_BASE_URL, POSTGRES_PASSWORD, ADMIN_PASSWORD, CLOUDFLARE_TUNNEL_TOKEN
 docker compose up -d
 ```
+
+Non serve configurare nulla: il database PostgreSQL è incluso nello stack (non è esposto fuori da Docker)
+e l'addon risponde su `http://<server>:10000`. Per personalizzare (password admin, URL pubblico, Cloudflare)
+copia `.env.example` in `.env` e modifica i valori, poi ripeti `docker compose up -d`.
 
 Lo stack avvia quattro servizi:
 
@@ -26,9 +29,11 @@ Lo stack avvia quattro servizi:
 | `addon` | l'addon (porta interna 10000, non esposta su Internet) |
 | `db` | PostgreSQL con i dati in un volume |
 | `warp` | Cloudflare WARP: tutto ciò che il server scarica esce da qui, mai dal tuo IP |
-| `cloudflared` | Cloudflare Tunnel: pubblica l'addon sul tuo dominio senza aprire porte |
+| `cloudflared` | Cloudflare Tunnel (facoltativo, profilo `tunnel`): pubblica l'addon sul tuo dominio senza aprire porte |
 
-Se non usi Cloudflare, togli il servizio `cloudflared` e decommenta `ports` nel servizio `addon`.
+Con Cloudflare Tunnel: metti `CLOUDFLARE_TUNNEL_TOKEN` e `ADDON_BIND=127.0.0.1` nel `.env` e avvia con
+`docker compose --profile tunnel up -d`. Con `ADDON_BIND=127.0.0.1` la porta 10000 non è raggiungibile da fuori:
+si entra solo dal tunnel.
 
 Nei docker-compose il **generatore playlist e il resolver Python sono disattivati** (`PYTHON_ENABLED=false`):
 eseguono sul server codice scaricato da URL. Per attivarli metti `PYTHON_ENABLED=true` nel file `.env`;
@@ -59,9 +64,10 @@ L'obiettivo è che né gli URL delle configurazioni né il traffico rivelino l'i
 ### Opzione A: Cloudflare Tunnel (VPS / casa)
 
 1. Cloudflare Zero Trust → Networks → Tunnels → crea un tunnel di tipo **cloudflared**
-2. Copia il token in `CLOUDFLARE_TUNNEL_TOKEN`
+2. Copia il token in `CLOUDFLARE_TUNNEL_TOKEN` (file `.env`)
 3. Aggiungi un *Public hostname* (es. `tv.tuodominio.it`) con servizio `http://addon:10000`
-4. Imposta `PUBLIC_BASE_URL=https://tv.tuodominio.it`
+4. Imposta `PUBLIC_BASE_URL=https://tv.tuodominio.it` e `ADDON_BIND=127.0.0.1`
+5. Avvia con `docker compose --profile tunnel up -d`
 
 Il server non espone porte: l'unico modo di raggiungerlo è attraverso Cloudflare.
 

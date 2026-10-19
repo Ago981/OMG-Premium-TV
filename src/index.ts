@@ -19,7 +19,17 @@ function every(ms: number, task: () => Promise<unknown> | void, name: string): v
 
 async function main(): Promise<void> {
     fs.mkdirSync(env.dataDir, { recursive: true });
-    const database = await initDatabase();
+    // Il database del compose può impiegare qualche secondo a partire: si riprova per ~60 s
+    let database: Awaited<ReturnType<typeof initDatabase>> | null = null;
+    for (let attempt = 1; !database; attempt++) {
+        try {
+            database = await initDatabase();
+        } catch (e) {
+            if (attempt >= 20 || /DATABASE_URL is required/.test(logger.errMsg(e))) throw e;
+            logger.warn('_', `Database not ready (${logger.errMsg(e)}), retrying in 3 s...`);
+            await new Promise(r => setTimeout(r, 3000));
+        }
+    }
     logger.log('_', `Database: ${database.kind}`);
     await initAppSecret();
     await initAdminPassword();
