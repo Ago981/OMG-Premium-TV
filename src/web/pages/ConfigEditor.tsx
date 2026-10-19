@@ -180,7 +180,7 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
                 <p><span className="badge ok" data-i18n="proxy_recommended">Recommended</span> <strong data-i18n="proxy_why_title">Why use a proxy</strong></p>
                 <ul>
                     <li data-i18n="proxy_why_1">With a proxy (MediaFlow Proxy or EasyProxy) everything goes through it: the playlist download and every stream. Sources only see the proxy's IP.</li>
-                    <li data-i18n="proxy_why_2">It also plays streams that need special headers, extractors (DaddyLive, Vavoo…) or ClearKey DRM keys.</li>
+                    <li data-i18n="proxy_why_2">It also plays streams that need special headers, extractors or ClearKey DRM keys.</li>
                     <li data-i18n="proxy_why_3">Without a proxy, streams are opened directly by your device, from your IP.</li>
                 </ul>
             </div>

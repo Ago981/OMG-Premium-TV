@@ -159,7 +159,7 @@ Non attivare entrambi sullo stesso percorso: WARP dentro WARP rallenta e crea pr
 | HLS | `/proxy/hls/manifest.m3u8?d=` | `/proxy/manifest.m3u8?url=` (riconoscimento automatico) |
 | DASH | `/proxy/mpd/manifest.m3u8?d=` | `/proxy/manifest.m3u8?url=` |
 | DASH ClearKey | `key_id=&key=` | `clearkey=KID:KEY` |
-| Estrattori (DLHD, Vavoo…) | `/extractor/video?host=DLHD` per `.php` | automatici sull'endpoint universale |
+| Estrattori | `/extractor/video?host=DLHD` per `.php` | automatici sull'endpoint universale |
 | Header | `h_user-agent`, `h_referer`, `h_origin` | uguali |
 
 Le chiavi ClearKey vengono lette dalle playlist (`#KODIPROP:inputstream.adaptive.license_key=KID:KEY`).

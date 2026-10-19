@@ -10,7 +10,7 @@ import type { ProxyType, StreamHeaders, UserConfig } from '../types';
  *  - EasyProxy        (https://github.com/realbestia1/EasyProxy)
  *
  * Usano gli stessi parametri (api_password, d/url, h_<header>), ma EasyProxy ha un endpoint
- * universale /proxy/manifest.m3u8 che riconosce da solo HLS, DASH ed estrattori (Vavoo, DaddyLive...).
+ * universale /proxy/manifest.m3u8 che riconosce da solo HLS, DASH ed estrattori.
  * Con proxy_type "auto" il tipo si ricava da /api/info (EasyProxy risponde {"proxy": "EasyProxy"}).
  */
 
@@ -163,7 +163,7 @@ export type StreamType = 'HLS' | 'DASH' | 'HTTP' | 'PHP';
 export function streamType(url: string): StreamType {
     if (url.endsWith('.mpd') || url.includes('.mpd?')) return 'DASH';
     if (url.endsWith('.mp4')) return 'HTTP';
-    if (url.endsWith('.php') || url.includes('/stream/stream-') || url.includes('daddylive.dad') || url.includes('/extractor/video')) return 'PHP';
+    if (url.endsWith('.php') || url.includes('/stream/stream-') || url.includes('/extractor/video')) return 'PHP';
     return 'HLS';
 }
 
