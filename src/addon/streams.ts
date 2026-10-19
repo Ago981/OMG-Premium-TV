@@ -16,6 +16,7 @@ import { buildProxyUrl, proxyLabel, resolveProxyKind, streamType, type ProxyKind
 
 const EXCLUDED_DOMAINS = ['pluto.tv'];
 const HEALTH_TTL_MS = 60 * 1000;
+const XTREAM_STREAM_RE = /\/(live|movie|series)\/[^/]+\/[^/]+\/[^/]+\.[a-z0-9]{2,5}(\?|$)/i;
 const health = new Map<string, { at: number; ok: boolean }>();
 
 export interface StreamContext {
@@ -42,6 +43,9 @@ function pick(headers: StreamHeaders, ...names: string[]): string | undefined {
  * verso WARP non significa che lo stream non funzioni, quindi l'esito non scarta mai lo stream.
  */
 async function proxyHealthy(proxyUrl: string, input: StreamInput, logKey: string): Promise<boolean> {
+    // Stream Xtream (/live|movie|series/<user>/<pass>/<id>.<ext>): niente verifica. Ogni prova occupa una delle
+    // connessioni dell'abbonamento (spesso una sola) e il provider rifiuta poi il player o la prova stessa (401).
+    if (XTREAM_STREAM_RE.test(input.url)) return true;
     const cached = health.get(proxyUrl);
     if (cached && Date.now() - cached.at < HEALTH_TTL_MS) return cached.ok;
     const headers = input.headers;
@@ -54,9 +58,15 @@ async function proxyHealthy(proxyUrl: string, input: StreamInput, logKey: string
     let reason = '';
     try {
         const res = await request(proxyUrl, { headers: h, timeoutMs: env.proxyCheckTimeoutMs });
-        await res.body?.cancel();
         ok = res.status < 400;
         reason = `HTTP ${res.status}`;
+        if (!ok) {
+            // Il testo distingue la password del proxy sbagliata dall'errore della sorgente inoltrato dal proxy
+            const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 120);
+            if (body) reason += `: ${body}`;
+        } else {
+            await res.body?.cancel();
+        }
     } catch (e) {
         reason = logger.errMsg(e);
     }

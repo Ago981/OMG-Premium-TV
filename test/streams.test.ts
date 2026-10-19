@@ -31,3 +31,19 @@ test('a failed proxy check never drops the proxied stream', async () => {
         Object.assign(env, saved);
     }
 });
+
+test('Xtream streams are not checked through the proxy', async () => {
+    const saved = { ...env };
+    Object.assign(env, { allowPrivateUrls: true, outboundProxy: '', outboundProxyRequired: false, streamMasking: false, proxyCheckTimeoutMs: 1000 });
+    try {
+        const xtream = {
+            id: 'tv|x', name: 'X',
+            streamInfo: { urls: [{ url: 'http://provider.example:8080/live/mario/secret/101.m3u8', name: 'X', headers: {} }] }
+        } as unknown as Channel;
+        const config = normalizeConfig({ proxy: 'http://127.0.0.1:9', proxy_pwd: 'pwd', proxy_type: 'easyproxy', mask_streams: false, force_proxy: true });
+        const [s] = await buildStreams(xtream, { config, configId: 't', baseUrl: 'http://addon', resolver: {} as PythonResolver });
+        assert.match(s.title, /^🌐/, 'no check, so no warning icon');
+    } finally {
+        Object.assign(env, saved);
+    }
+});

@@ -34,6 +34,7 @@ Correzioni sugli stream:
 - **Nome coerente in Stremio**: addon e cataloghi (canali, film, serie) di ogni configurazione si chiamano `OMG+ TV - <nome configurazione>` (solo `OMG+ TV` senza nome). Per vedere il nuovo nome nelle configurazioni già installate va reinstallato l'addon.
 - **Segnaposto colorati**: senza nessuna locandina, film e serie hanno un segnaposto con il titolo come i canali, ma con colori propri: viola i canali, rosso i film, blu petrolio le serie.
 - **Wizard**: EPG attivo di default; lingua e nome della configurazione subito sotto il paese, nel primo passaggio; con un account Xtream, nel campo EPG la nota «lascia vuoto per usare la guida prevista dalla configurazione Xtream».
+- **Xtream con proxy**: gli stream Xtream non vengono più verificati dal server attraverso il proxy. Ogni prova occupava una delle connessioni dell'abbonamento (spesso una sola) e il provider rispondeva 401 alla prova o al player. Nei log degli stream non verificati compare anche il testo della risposta del proxy, per distinguere la password del proxy sbagliata dall'errore della sorgente.
 - **Nomi puliti**: categorie e canali che iniziano e/o finiscono con 3 o più trattini (`-----DOCUMENTARI-----`, `-----RAI 1-----`) diventano `DOCUMENTARI` e `RAI 1`, sia nelle playlist M3U sia negli account Xtream (live, film e serie). Gli id dei canali non cambiano. Dopo l'aggiornamento playlist e film/serie vengono riscaricati una volta per applicare i nomi puliti (anche alle categorie già nascoste).
 
 ### 🚀 Versione 8.4.0
