@@ -259,6 +259,17 @@ export interface ChannelGuide {
     icon: string | null;
 }
 
+/** Pulisce stringhe eliminando tag di risoluzione, estensioni e formati (es. HD, SD, 4K, HLS, IT). */
+export function cleanKey(s: string | undefined): string {
+    if (!s) return '';
+    return s
+        .toLowerCase()
+        .replace(/[([].*?[)\]]/g, '')
+        .replace(/\b(hd|sd|fhd|4k|uhd|hevc|it|ita|italy|hls|dash|tv|live|channel)\b/gi, '')
+        .replace(/[^a-z0-9]/gi, '')
+        .trim();
+}
+
 /** Id da provare: "canale5.it" e poi "canale5" (match con EPG che non usano il suffisso). */
 export function lookupIds(tvgId: string | undefined): string[] {
     const n = normalizeId(tvgId);
@@ -284,10 +295,15 @@ function toProgram(r: { title: string; description: string | null; category: str
 }
 
 /**
- * Guida di più canali con 3 query in tutto (non 3 per canale): fondamentale con PostgreSQL in rete.
- * Se il tvg-id non ha programmi prova il nome del canale contro i display-name dell'EPG.
+ * Guida di più canali con poche query ottimizzate.
+ * Con smart_epg=true (default) abbina in modo permissivo rimuovendo suffissi di risoluzione (HD/SD/4K/numeri).
  */
-export async function getGuides(sourceIds: number[], channels: ChannelQuery[], upcomingCount = 2): Promise<Map<string, ChannelGuide>> {
+export async function getGuides(
+    sourceIds: number[],
+    channels: ChannelQuery[],
+    upcomingCount = 2,
+    smartEpg = true
+): Promise<Map<string, ChannelGuide>> {
     const out = new Map<string, ChannelGuide>();
     if (!sourceIds.length || !channels.length) return out;
     markUsed(sourceIds);
@@ -303,16 +319,52 @@ export async function getGuides(sourceIds: number[], channels: ChannelQuery[], u
         if (nk) names.add(nk);
     }
 
-    // Fallback per nome: name_key → channel_id
+    // Carica i canali EPG dalle sorgenti attive per il fallback e lo smart matching
+    const epgChannels = await db().all<{ channel_id: string; name_key: string | null; icon: string | null }>(
+        `SELECT channel_id, name_key, icon FROM epg_channels WHERE source_id IN (${inList(sourceIds)})`,
+        sourceIds
+    );
+
     const byName = new Map<string, { channel_id: string; icon: string | null }>();
-    if (names.size) {
-        const rows = await db().all<{ name_key: string; channel_id: string; icon: string | null }>(
-            `SELECT name_key, channel_id, icon FROM epg_channels
-             WHERE source_id IN (${inList(sourceIds)}) AND name_key IN (${inList([...names])})`,
-            [...sourceIds, ...names]);
-        for (const r of rows) if (!byName.has(r.name_key)) byName.set(r.name_key, r);
-        for (const r of rows) allIds.add(r.channel_id);
+    const preparedEpgChannels: Array<{ channel_id: string; clean_id: string; clean_name: string }> = [];
+
+    for (const r of epgChannels) {
+        if (r.name_key && !byName.has(r.name_key)) byName.set(r.name_key, { channel_id: r.channel_id, icon: r.icon });
+        if (smartEpg) {
+            preparedEpgChannels.push({
+                channel_id: r.channel_id,
+                clean_id: cleanKey(r.channel_id),
+                clean_name: cleanKey(r.name_key || undefined)
+            });
+        }
     }
+
+    // Risoluzione canali
+    for (const ch of channels) {
+        const ids = candidates.get(ch.key) || [];
+        const named = byName.get(normalizeId(ch.name));
+        if (named && !ids.includes(named.channel_id)) ids.push(named.channel_id);
+
+        if (smartEpg && ids.length === 0) {
+            const cleanTvg = cleanKey(ch.tvgId);
+            const cleanN = cleanKey(ch.name);
+            const searchTokens = [cleanTvg, cleanN].filter(t => t.length >= 2);
+
+            let smartHit = preparedEpgChannels.find(e =>
+                searchTokens.some(tok => e.clean_id === tok || e.clean_name === tok)
+            );
+            if (!smartHit) {
+                smartHit = preparedEpgChannels.find(e =>
+                    searchTokens.some(tok => tok.length >= 3 && (e.clean_id.startsWith(tok) || e.clean_name.startsWith(tok)))
+                );
+            }
+            if (smartHit && !ids.includes(smartHit.channel_id)) {
+                ids.push(smartHit.channel_id);
+            }
+        }
+        ids.forEach(i => allIds.add(i));
+    }
+
     if (!allIds.size) return out;
 
     const idList = [...allIds];
@@ -339,8 +391,6 @@ export async function getGuides(sourceIds: number[], channels: ChannelQuery[], u
 
     for (const ch of channels) {
         const ids = [...(candidates.get(ch.key) || [])];
-        const named = byName.get(normalizeId(ch.name));
-        if (named && !ids.includes(named.channel_id)) ids.push(named.channel_id);
         const hit = ids.find(i => progByChannel.has(i));
         const list = hit ? progByChannel.get(hit) as typeof programs : [];
         const currentRow = list.find(p => p.start_time <= now && p.stop_time > now) || null;

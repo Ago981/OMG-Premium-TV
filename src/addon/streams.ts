@@ -2,6 +2,7 @@ import { appConfig } from '../config';
 import { env } from '../env';
 import { request } from '../http-client';
 import * as logger from '../logger';
+import { countryLangAbbr } from '../presets';
 import { encrypt } from '../security/crypto';
 import type { Channel, StreamHeaders, StremioStream, UserConfig } from '../types';
 import type { PythonResolver } from '../python/python-resolver';
@@ -24,8 +25,10 @@ export interface StreamContext {
     resolver: PythonResolver;
 }
 
-function langAbbr(cfg: UserConfig): string {
-    return (cfg.language || appConfig.defaultLanguage).substring(0, 3).toUpperCase();
+function aioSuffix(cfg: UserConfig): string {
+    if (!cfg.aio_compatible) return '';
+    const abbr = countryLangAbbr(cfg.country, cfg.language || appConfig.defaultLanguage);
+    return ` [${abbr}]`;
 }
 
 function pick(headers: StreamHeaders, ...names: string[]): string | undefined {
@@ -42,16 +45,14 @@ async function proxyHealthy(proxyUrl: string, headers: StreamHeaders, logKey: st
     const origin = pick(headers, 'origin', 'Origin');
     if (origin) h.Origin = origin;
     let ok = false;
-    for (let attempt = 0; attempt < 3 && !ok; attempt++) {
-        try {
-            const res = await request(proxyUrl, { headers: h, timeoutMs: 10000 });
-            await res.body?.cancel();
-            ok = res.status < 400;
-        } catch {
-            if (attempt < 2) await new Promise(r => setTimeout(r, 500));
-        }
+    try {
+        const res = await request(proxyUrl, { headers: h, timeoutMs: 3000 });
+        await res.body?.cancel();
+        ok = res.status < 400;
+    } catch {
+        ok = false;
     }
-    if (!ok) logger.warn(logKey, 'Proxy health check failed');
+    if (!ok) logger.warn(logKey, 'Proxy health check failed for stream:', proxyUrl.split('?')[0]);
     health.set(proxyUrl, { at: Date.now(), ok });
     if (health.size > 5000) health.clear();
     return ok;
@@ -100,7 +101,7 @@ interface StreamInput {
 function directStream(input: StreamInput, cfg: UserConfig, icon = '📺', suffix = ''): StremioStream {
     return {
         name: input.name,
-        title: `${icon} ${input.originalName || input.name} [${langAbbr(cfg)}]${suffix}`.trimStart(),
+        title: `${icon} ${input.originalName || input.name}${aioSuffix(cfg)}${suffix}`.trimStart(),
         url: input.url,
         headers: input.headers,
         language: cfg.language,
@@ -112,41 +113,34 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
     const cfg = ctx.config;
     if (cfg.proxy && input.url.includes(cfg.proxy)) return [];
     if (EXCLUDED_DOMAINS.some(d => input.url.includes(d))) {
-        return [{ ...directStream(input, cfg, ''), title: `${input.originalName} [${langAbbr(cfg)}]` }];
+        return [{ ...directStream(input, cfg, ''), title: `${input.originalName}${aioSuffix(cfg)}` }];
     }
     if (!cfg.proxy || !cfg.proxy_pwd) return [];
 
-    let proxyUrl = buildProxyUrl(kind, input.url, input.headers, cfg, input.clearkey) as string;
-    let ok = await proxyHealthy(proxyUrl, input.headers, ctx.configId);
-    if (!ok && !input.url.endsWith('/') && !input.clearkey) {
-        const withSlash = buildProxyUrl(kind, input.url + '/', input.headers, cfg) as string;
-        if (await proxyHealthy(withSlash, input.headers, ctx.configId)) {
-            proxyUrl = withSlash;
-            ok = true;
-        }
-    }
+    const proxyUrl = buildProxyUrl(kind, input.url, input.headers, cfg, input.clearkey) as string;
+    const ok = await proxyHealthy(proxyUrl, input.headers, ctx.configId);
     if (ok) {
         const type = input.clearkey ? 'DASH ClearKey' : streamType(input.url);
         return [{
             name: input.name,
-            title: `🌐 ${input.originalName} [${langAbbr(cfg)}]\n[${proxyLabel(kind)} ${type}]`,
+            title: `🌐 ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ${type}]`,
             url: proxyUrl,
             language: cfg.language,
             behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
         }];
     }
-    // Il proxy non riesce ad aprire questo stream: si offre il link diretto (dall'IP dell'utente), segnalato
-    return [{ ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName} [${langAbbr(cfg)}]\n[${proxyLabel(kind)} ✗ → direct]` }];
+    // Con force_proxy (predefinito se c'è un proxy), non si offrono stream diretti per evitare di esporre l'IP dell'utente
+    if (cfg.force_proxy) return [];
+
+    // Se force_proxy è disattivato: si offre il link diretto di riserva (dall'IP dell'utente), segnalato con ⚠️
+    return [{ ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ✗ → direct]` }];
 }
 
 /** Con un proxy configurato tutto passa dal proxy; senza, gli stream sono diretti (IP dell'utente). */
 async function originalStreams(inputs: StreamInput[], ctx: StreamContext, kind: ProxyKind | null): Promise<StremioStream[]> {
-    const out: StremioStream[] = [];
-    for (const input of inputs) {
-        if (kind) out.push(...await proxyStreams(input, ctx, kind));
-        else out.push(directStream(input, ctx.config));
-    }
-    return out;
+    if (!kind) return inputs.map(input => directStream(input, ctx.config));
+    const results = await Promise.all(inputs.map(input => proxyStreams(input, ctx, kind)));
+    return results.flat();
 }
 
 async function resolvedStreams(channel: Channel, ctx: StreamContext): Promise<StremioStream[]> {

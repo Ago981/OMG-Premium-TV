@@ -182,8 +182,8 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'mask_streams',
-        'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
+    var CONFIG_FIELDS = ['label', 'country', 'm3u', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
+        'aio_compatible', 'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 
     /** Legge tutti i campi della configurazione (anche quelli fuori dal form con form="configForm"). */
@@ -271,6 +271,14 @@
         fillEpgSelect();
         countrySel.addEventListener('change', syncEpgPreset);
         document.addEventListener('omg:language', function () { fillCountrySelect(); fillEpgSelect(); });
+
+        if (form.proxy && form.force_proxy) {
+            form.proxy.addEventListener('input', function () {
+                if (form.proxy.value.trim() && mode === 'new') {
+                    form.force_proxy.checked = true;
+                }
+            });
+        }
 
         // ---- wizard
         var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
@@ -379,6 +387,34 @@
                         out.className = 'small error-text';
                     }
                 });
+            },
+            'copy-manifest': function () {
+                var url = $('#manifestUrl').textContent.trim();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function () {
+                        toast(t('toast_copied'));
+                    }).catch(function () {
+                        copyFallback(url);
+                    });
+                } else {
+                    copyFallback(url);
+                }
+                function copyFallback(text) {
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+                    try {
+                        document.execCommand('copy');
+                        toast(t('toast_copied'));
+                    } catch (e) {
+                        prompt(t('copy_manifest'), text);
+                    }
+                    document.body.removeChild(ta);
+                }
             },
             install: function () {
                 var url = $('#manifestUrl').textContent.trim();

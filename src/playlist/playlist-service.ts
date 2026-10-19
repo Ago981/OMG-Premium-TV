@@ -8,7 +8,6 @@ import { GENERATED_SCHEME, generatedPlaylistPath } from '../python/paths';
 import { sha256 } from '../security/crypto';
 import type { Channel, PlaylistData, UserConfig } from '../types';
 import { M3UParser, normalizeId, parseRemapping } from './m3u-parser';
-import { hasProxy, proxyFetchUrl, unwrapProxiedPlaylist } from '../addon/proxy';
 
 /**
  * Cache playlist condivisa: configurazioni con le stesse sorgenti (M3U + remapper + suffisso)
@@ -30,10 +29,9 @@ const MEMORY_TTL_MS = 30 * 60 * 1000;
 const memory = new Map<string, Entry>();
 const inflight = new Map<string, Promise<Entry>>();
 
-/** Stesse sorgenti e stesso proxy = stessa cache (chi usa un proxy riceve sempre il download fatto dal suo). */
-export function playlistKey(cfg: Pick<UserConfig, 'm3u' | 'remapper_path' | 'id_suffix' | 'proxy' | 'proxy_pwd'>): string {
-    const via = hasProxy(cfg) ? cfg.proxy.trim().replace(/\/+$/, '') : '';
-    return sha256(JSON.stringify([cfg.m3u.trim(), cfg.remapper_path.trim(), cfg.id_suffix.trim(), via])).slice(0, 24);
+/** Stesse sorgenti = stessa cache. */
+export function playlistKey(cfg: Pick<UserConfig, 'm3u' | 'remapper_path' | 'id_suffix'>): string {
+    return sha256(JSON.stringify([cfg.m3u.trim(), cfg.remapper_path.trim(), cfg.id_suffix.trim()])).slice(0, 24);
 }
 
 export function parseInterval(value: string, fallbackMs: number): number {
@@ -60,15 +58,11 @@ function buildEntry(key: string, data: PlaylistData, updatedAt: number, lastErro
 type Fetcher = (url: string) => Promise<string>;
 
 /**
- * Con un proxy configurato anche playlist e remapping si scaricano dal proxy dell'utente:
- * la sorgente vede l'IP del suo proxy. Senza proxy li scarica il server (via OUTBOUND_PROXY/WARP).
+ * Playlist e remapping vengono sempre scaricati direttamente dal server (via OUTBOUND_PROXY/WARP se attivo),
+ * evitando blocchi, incompatibilità o errori 502 dei proxy sui file M3U.
  */
-function fetcherFor(cfg: UserConfig): Fetcher {
-    if (!hasProxy(cfg)) return url => fetchText(url);
-    return async url => {
-        const text = await fetchText(proxyFetchUrl(cfg, url));
-        return text.trimStart().startsWith('#EXTM3U') ? unwrapProxiedPlaylist(text, cfg.proxy) : text;
-    };
+function fetcherFor(_cfg: UserConfig): Fetcher {
+    return url => fetchText(url);
 }
 
 /** Legge una sorgente: URL http(s) oppure la playlist generata dallo script Python. */

@@ -139,3 +139,22 @@ export const THEMATIC_EPG: ThematicEpg[] = [
 export function countryPreset(code: string): CountryPreset | undefined {
     return COUNTRY_PRESETS.find(c => c.code === code);
 }
+
+/**
+ * Restituisce la sigla a 3 lettere del paese (es. ITA, FRA, DEU, GBR, ESP, USA).
+ * Usa il paese selezionato nel wizard (o la lingua configurata se paese assente).
+ */
+export function countryLangAbbr(country?: string, fallbackLang = 'ITA'): string {
+    if (!country) return fallbackLang.substring(0, 3).toUpperCase();
+    const c = country.toLowerCase().trim();
+    const map: Record<string, string> = {
+        it: 'ITA', us: 'USA', uk: 'GBR', gb: 'GBR', fr: 'FRA', de: 'DEU', es: 'ESP', pt: 'PRT',
+        br: 'BRA', ru: 'RUS', ar: 'ARG', cl: 'CHL', mx: 'MEX', co: 'COL', al: 'ALB', at: 'AUT',
+        au: 'AUS', ba: 'BIH', be: 'BEL', bg: 'BGR', ca: 'CAN', ch: 'CHE', cz: 'CZE', dk: 'DNK',
+        eg: 'EGY', fi: 'FIN', gr: 'GRC', hk: 'HKG', hr: 'HRV', hu: 'HUN', id: 'IDN', ie: 'IRL',
+        il: 'ISR', in: 'IND', jp: 'JPN', kr: 'KOR', nl: 'NLD', no: 'NOR', pl: 'POL', ro: 'ROU',
+        rs: 'SRB', se: 'SWE', tr: 'TUR', ua: 'UKR'
+    };
+    if (map[c]) return map[c];
+    return c.toUpperCase().padEnd(3, 'X').slice(0, 3);
+}

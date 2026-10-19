@@ -2,7 +2,10 @@
 export interface UserConfig {
     m3u: string;
     epg: string;
+    /** Abilita l'EPG. */
     epg_enabled: boolean;
+    /** Abbinamento EPG intelligente e permissivo (ignora tag HD/SD, prefissi LCN, fallback su nome/titolo). */
+    smart_epg: boolean;
     language: string;
     proxy: string;
     proxy_pwd: string;
@@ -16,6 +19,10 @@ export interface UserConfig {
     resolver_update_interval: string;
     /** Nasconde gli URL reali degli stream dietro /s/<token>. */
     mask_streams: boolean;
+    /** Se true (predefinito se c'è un proxy), mostra SOLO stream proxati ed esclude i fallback diretti. */
+    force_proxy: boolean;
+    /** Modalità compatibile con AIOStreams: aggiunge il suffisso [PAESE] a canali e stream. */
+    aio_compatible: boolean;
     /** Tipo di proxy: rilevato automaticamente oppure forzato. */
     proxy_type: ProxyType;
     /** Codice paese scelto nei preset (solo per precompilare il wizard). */
