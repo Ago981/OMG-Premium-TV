@@ -6,7 +6,7 @@ import { countryLangAbbr } from '../presets';
 import { encrypt } from '../security/crypto';
 import type { Channel, StreamHeaders, StremioStream, UserConfig } from '../types';
 import type { PythonResolver } from '../python/python-resolver';
-import { buildProxyUrl, proxyLabel, XTREAM_LINK_RE, resolveProxyKind, streamType, type ProxyKind } from './proxy';
+import { buildProxyUrl, hasProxy, proxyLabel, XTREAM_LINK_RE, resolveProxyKind, streamType, type ProxyKind } from './proxy';
 
 /**
  * Costruzione degli stream: originali, via proxy (MediaFlow o EasyProxy), risolti dal resolver Python.
@@ -132,7 +132,7 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
     if (EXCLUDED_DOMAINS.some(d => input.url.includes(d))) {
         return [{ ...directStream(input, cfg, ''), title: `${input.originalName}${aioSuffix(cfg)}` }];
     }
-    if (!cfg.proxy || !cfg.proxy_pwd) return [];
+    if (!hasProxy(cfg)) return [];
 
     const proxyUrl = buildProxyUrl(kind, input.url, input.headers, cfg, input.clearkey) as string;
     const ok = await proxyHealthy(proxyUrl, input, ctx.configId);
@@ -160,7 +160,7 @@ async function originalStreams(inputs: StreamInput[], ctx: StreamContext, kind: 
 async function resolvedStreams(channel: Channel, ctx: StreamContext): Promise<StremioStream[]> {
     const cfg = ctx.config;
     if (!(await ctx.resolver.ensureScript(cfg.resolver_script))) return [];
-    const proxyConfig = cfg.proxy && cfg.proxy_pwd ? { url: cfg.proxy, password: cfg.proxy_pwd } : null;
+    const proxyConfig = hasProxy(cfg) ? { url: cfg.proxy, password: cfg.proxy_pwd } : null;
     const results = await Promise.all(channel.streamInfo.urls.map(async s => {
         const headers = { ...s.headers };
         if (!headers['User-Agent'] && !headers['user-agent']) headers['User-Agent'] = appConfig.defaultUserAgent;
@@ -179,7 +179,7 @@ async function resolvedStreams(channel: Channel, ctx: StreamContext): Promise<St
 
 export async function buildStreams(channel: Channel, ctx: StreamContext): Promise<StremioStream[]> {
     const cfg = ctx.config;
-    const kind: ProxyKind | null = cfg.proxy && cfg.proxy_pwd ? await resolveProxyKind(cfg) : null;
+    const kind: ProxyKind | null = hasProxy(cfg) ? await resolveProxyKind(cfg) : null;
     const inputs: StreamInput[] = channel.streamInfo.urls.map(s => ({
         name: channel.name,
         originalName: s.name,

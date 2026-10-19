@@ -87,8 +87,8 @@ export async function checkProxy(proxyUrl: string, password: string): Promise<Pr
 }
 
 /** Proxy configurato e completo (URL + password): da qui in poi tutto passa dal proxy. */
-export function hasProxy(cfg: Pick<UserConfig, 'proxy' | 'proxy_pwd'>): boolean {
-    return !!(cfg.proxy && cfg.proxy_pwd);
+export function hasProxy(cfg: Pick<UserConfig, 'proxy' | 'proxy_pwd' | 'proxy_type'>): boolean {
+    return cfg.proxy_type !== 'off' && !!(cfg.proxy && cfg.proxy_pwd);
 }
 
 /**
@@ -200,7 +200,7 @@ function easyproxyUrl(base: string, streamUrl: string, headers: StreamHeaders, c
 }
 
 export function buildProxyUrl(kind: ProxyKind, streamUrl: string, headers: StreamHeaders, cfg: UserConfig, clearkey?: string): string | null {
-    if (!cfg.proxy || !cfg.proxy_pwd || !streamUrl) return null;
+    if (!hasProxy(cfg) || !streamUrl) return null;
     const base = baseOf(cfg);
     return kind === 'easyproxy'
         ? easyproxyUrl(base, streamUrl, headers, cfg, clearkey)

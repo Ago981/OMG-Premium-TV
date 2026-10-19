@@ -323,6 +323,16 @@
                 r.addEventListener('change', syncSource);
             });
             if (form.elements.xtream_vod) form.elements.xtream_vod.addEventListener('change', syncSource);
+            // Proxy disattivato: campi del proxy nascosti (i valori restano salvati)
+            if (form.elements.proxy_type) {
+                var syncProxy = function () {
+                    var off = form.elements.proxy_type.value === 'off';
+                    form.querySelectorAll('.proxy-fields').forEach(function (el) { el.classList.toggle('hidden', off); });
+                    form.querySelectorAll('.proxy-off-hint').forEach(function (el) { el.classList.toggle('hidden', !off); });
+                };
+                form.elements.proxy_type.addEventListener('change', syncProxy);
+                syncProxy();
+            }
             syncSource();
             form.addEventListener('omg:source', syncSource);
         }
@@ -362,7 +372,7 @@
                         (d.xtream_vod ? ' · ' + t('summary_vod') : '')]
                     : ['M3U', d.m3u.split(',').filter(Boolean).length + ' URL'],
                 ['EPG', epgText],
-                ['Proxy', d.proxy && d.proxy_pwd ? (d.proxy_type === 'auto' ? t('proxy_type_auto') : d.proxy_type) + ' — ' + t('summary_proxy_all') : t('summary_proxy_none')],
+                ['Proxy', d.proxy_type !== 'off' && d.proxy && d.proxy_pwd ? (d.proxy_type === 'auto' ? t('proxy_type_auto') : d.proxy_type) + ' — ' + t('summary_proxy_all') : t('summary_proxy_none')],
                 [t('mask_streams'), d.mask_streams ? t('yes') : t('no')],
                 [t('update_interval'), d.update_interval || '12:00']
             ];

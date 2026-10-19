@@ -62,3 +62,17 @@ test('Xtream links reach the proxy with a player User-Agent', () => {
     const mf = new URL(buildProxyUrl('mediaflow', 'http://p.example/movie/u/p/1.mp4', {}, cfg) as string);
     assert.equal(mf.searchParams.get('h_user-agent'), env.xtreamUserAgent, 'MediaFlow too');
 });
+
+test('proxy type "off" keeps URL and password but streams go direct', async () => {
+    const saved = { ...env };
+    Object.assign(env, { streamMasking: false });
+    try {
+        const config = normalizeConfig({ proxy: 'http://127.0.0.1:9', proxy_pwd: 'pwd', proxy_type: 'off', force_proxy: true, mask_streams: false });
+        assert.equal(config.proxy, 'http://127.0.0.1:9', 'saved values are kept');
+        const streams = await buildStreams(channel, { config, configId: 't', baseUrl: 'http://addon', resolver: {} as PythonResolver });
+        assert.deepEqual(streams.map(s => s.url), ['https://origin.example/live.m3u8']);
+        assert.equal(buildProxyUrl('easyproxy', 'https://origin.example/live.m3u8', {}, config), null);
+    } finally {
+        Object.assign(env, saved);
+    }
+});

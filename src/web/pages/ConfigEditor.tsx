@@ -187,11 +187,14 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
             </div>
             <Field labelKey="proxy_type" label="Proxy type">
                 <select name="proxy_type">
+                    <option value="off" selected={c.proxy_type === 'off'} data-i18n="proxy_type_off">Disabled</option>
                     <option value="auto" selected={c.proxy_type === 'auto'} data-i18n="proxy_type_auto">Detect automatically</option>
                     <option value="mediaflow" selected={c.proxy_type === 'mediaflow'}>MediaFlow Proxy</option>
                     <option value="easyproxy" selected={c.proxy_type === 'easyproxy'}>EasyProxy</option>
                 </select>
             </Field>
+            <small className="hint proxy-off-hint" data-i18n="proxy_off_hint">Proxy disabled: streams are opened directly by your device. URL and password stay saved for when you turn it back on.</small>
+            <div className="proxy-fields">
             <Field labelKey="proxy_url" label="Proxy URL:">
                 <input type="url" name="proxy" value={c.proxy} placeholder="https://proxy.example.com" />
             </Field>
@@ -204,6 +207,7 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
             </div>
             <Check name="force_proxy" checked={c.force_proxy} labelKey="force_proxy" label="Proxy only" />
             <small className="hint" data-i18n="force_proxy_hint">Show only streams through the proxy. Exclude direct fallback streams if proxy fails.</small>
+            </div>
             {props.masking ? (
                 <>
                     <Check name="mask_streams" checked={c.mask_streams} labelKey="mask_streams" label="Hide real stream URLs" />

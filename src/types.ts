@@ -42,7 +42,8 @@ export interface UserConfig {
     country: string;
 }
 
-export type ProxyType = 'auto' | 'mediaflow' | 'easyproxy';
+/** 'off' = proxy disattivato: URL e password restano salvati ma non vengono usati. */
+export type ProxyType = 'off' | 'auto' | 'mediaflow' | 'easyproxy';
 
 export type SourceType = 'm3u' | 'xtream';
 

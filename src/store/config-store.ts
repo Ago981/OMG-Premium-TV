@@ -98,7 +98,7 @@ export function normalizeConfig(input: Record<string, unknown>, opts: { strict?:
         }
     }
     out.vod_excluded = parseExcluded(out.vod_excluded).map(s => s.slice(0, 200)).join('\n');
-    if (!['auto', 'mediaflow', 'easyproxy'].includes(out.proxy_type)) out.proxy_type = 'auto';
+    if (!['off', 'auto', 'mediaflow', 'easyproxy'].includes(out.proxy_type)) out.proxy_type = 'auto';
     if (out.source_type !== 'xtream') out.source_type = 'm3u';
     if (out.xtream_format !== 'ts') out.xtream_format = 'm3u8';
     out.country = /^[a-z]{2}$/i.test(out.country) ? out.country.toLowerCase() : '';
