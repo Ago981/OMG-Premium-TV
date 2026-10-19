@@ -14,6 +14,11 @@ export function normalizeId(id: unknown): string {
     return beforeAt.toLowerCase().replace(/[^\w.]/g, '').trim();
 }
 
+/** "-----DOCUMENTARI-----" → "DOCUMENTARI": via le serie di 3 o più trattini all'inizio e/o alla fine. */
+export function stripDashes(value: string): string {
+    return value.replace(/^\s*[-–—]{3,}\s*/, '').replace(/\s*[-–—]{3,}\s*$/, '').trim() || value.trim();
+}
+
 function cleanChannelName(name: string): string {
     return name.replace(/[([].*?[)\]]/g, '').trim().toLowerCase().replace(/\s+/g, '');
 }
@@ -100,12 +105,13 @@ function parseExtinf(line: string, headers: StreamHeaders, idSuffix: string): Pa
 
     const groupMatch = metadata.match(/group-title="([^"]+)"/);
     let group = groupMatch
-        ? groupMatch[1].split(';').map(g => g.trim()).filter(g => g !== '' && g.toLowerCase() !== 'undefined')
+        ? groupMatch[1].split(';').map(g => stripDashes(g)).filter(g => g !== '' && g.toLowerCase() !== 'undefined')
         : [];
     if (group.length === 0) group = ['Altri Canali'];
 
     const parts = metadata.split(',');
-    const name = parts[parts.length - 1].trim();
+    const name = stripDashes(parts[parts.length - 1]);
+    if (tvg.name) tvg.name = stripDashes(tvg.name);
     if (!tvg.id) tvg.id = cleanChannelName(name) + (idSuffix ? `.${idSuffix}` : '');
     return { name, group, tvg, headers };
 }

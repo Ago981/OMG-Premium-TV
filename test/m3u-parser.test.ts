@@ -1,7 +1,7 @@
 import { looseKey } from '../src/playlist/playlist-service';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { M3UParser, normalizeId, parseRemapping, NO_STREAM_NAME } from '../src/playlist/m3u-parser';
+import { M3UParser, normalizeId, parseRemapping, stripDashes, NO_STREAM_NAME } from '../src/playlist/m3u-parser';
 
 const PLAYLIST = `#EXTM3U url-tvg="https://epg.example/a.xml,https://epg.example/b.xml.gz"
 #EXTINF:-1 tvg-id="Rai1.it" tvg-logo="https://x/rai1.png" tvg-chno="1" group-title="Generalisti",Rai 1 (HD)
@@ -63,4 +63,16 @@ test('loose key finds channels whose id or name changed slightly', () => {
     assert.equal(looseKey('vetrinaprimafilalive'), looseKey('Vetrina Primafila Live HD'));
     assert.equal(looseKey('rai1'), looseKey('rai1.it'));
     assert.notEqual(looseKey('rai1'), looseKey('rai2'));
+});
+
+test('runs of 3+ dashes around group and channel names are removed', () => {
+    const p = new M3UParser();
+    p.add('#EXTM3U\n#EXTINF:-1 group-title="-----DOCUMENTARI-----",-----RAI 1-----\nhttp://x/1.m3u8\n#EXTINF:-1 group-title="Sport - Calcio",TG - Edizione\nhttp://x/2.m3u8\n');
+    const [rai, tg] = p.result().channels;
+    assert.equal(rai.name, 'RAI 1');
+    assert.deepEqual(rai.genre, ['DOCUMENTARI']);
+    assert.equal(rai.id, 'tv|rai1', 'id unchanged');
+    assert.equal(tg.name, 'TG - Edizione', 'single dashes inside names are kept');
+    assert.deepEqual(tg.genre, ['Sport - Calcio']);
+    assert.equal(stripDashes('---'), '---', 'a name made only of dashes is left as is');
 });

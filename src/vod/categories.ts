@@ -1,4 +1,5 @@
 import type { Param } from '../db';
+import { stripDashes } from '../playlist/m3u-parser';
 
 /**
  * Categorie (e sottocategorie) di film e serie Xtream.
@@ -26,7 +27,7 @@ export interface CategoryTree {
 
 function clean(name: unknown): string {
     // Il separatore è riservato ai percorsi
-    return String(name ?? '').replace(/›/g, '>').replace(/\s+/g, ' ').trim();
+    return stripDashes(String(name ?? '').replace(/›/g, '>').replace(/\s+/g, ' '));
 }
 
 const PREFIX_RE = /^\|?\s*([^|]{1,30}?)\s*\|\s*(.+)$/;

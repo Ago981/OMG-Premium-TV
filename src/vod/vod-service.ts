@@ -5,6 +5,7 @@ import { parseInterval } from '../playlist/playlist-service';
 import { credentialsOf, getAccount, xtreamCall, type XtreamCredentials } from '../playlist/xtream';
 import { getConfig, listActiveConfigs, vodEnabled, type ConfigRecord } from '../store/config-store';
 import type { UserConfig } from '../types';
+import { stripDashes } from '../playlist/m3u-parser';
 import { buildCategoryTree, categoryMatch, excludeCategories, usedCategories, type CategoryRaw } from './categories';
 import { imdbIdFor, TmdbAuthError, tmdbLanguage, yearOf, type VodKind } from './tmdb';
 
@@ -88,7 +89,8 @@ function str(v: unknown): string | null {
 
 function toRow(configId: string, kind: VodKind, raw: ListRaw, catName: Map<string, string>, stamp: number): Param[] | null {
     const id = str(kind === 'movie' ? raw.stream_id : raw.series_id);
-    const name = str(raw.name) || str(raw.title);
+    const rawName = str(raw.name) || str(raw.title);
+    const name = rawName ? stripDashes(rawName) : null;
     if (!id || !name) return null;
     const tmdb = str(raw.tmdb_id) || str(raw.tmdb);
     const imdb = raw.imdb_id && /^tt\d+$/.test(raw.imdb_id) ? raw.imdb_id : null;

@@ -124,6 +124,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         ]);
         assert.equal(byPrefix.pathById.get('2'), 'IT › Commedia');
         assert.equal(byPrefix.pathById.get('3'), 'EN | Drama', 'a prefix used once is not a group');
+        assert.equal(buildCategoryTree([{ category_id: 9, category_name: '-----DOCUMENTARI-----' }]).pathById.get('9'), 'DOCUMENTARI');
         assert.deepEqual(usedCategories(byPrefix.order, new Set(['IT › Commedia'])), ['IT', 'IT › Commedia']);
     });
 
