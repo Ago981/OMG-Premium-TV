@@ -134,22 +134,43 @@ export interface TmdbMatch {
 
 const IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
+interface Image {
+    file_path: string;
+    iso_639_1?: string | null;
+    iso_3166_1?: string | null;
+}
+
 interface Details {
     poster_path?: string | null;
     backdrop_path?: string | null;
     external_ids?: { imdb_id?: string | null };
+    images?: { posters?: Image[]; backdrops?: Image[] };
+}
+
+/**
+ * Locandina adatta a lingua e paese: prima quella nella lingua e del paese dell'utente,
+ * poi quella nella sua lingua, poi la locandina principale (le liste TMDB sono ordinate per voto).
+ */
+function pickPoster(d: Details, language: string): string | null {
+    const [lang, region] = language.split('-');
+    const posters = d.images?.posters || [];
+    const best = posters.find(p => p.iso_639_1 === lang && p.iso_3166_1 === region)
+        || posters.find(p => p.iso_639_1 === lang);
+    return best?.file_path || d.poster_path || null;
 }
 
 /** Scheda TMDB con ID esterni nella stessa richiesta: ID IMDb, copertina e sfondo (nella lingua dell'utente). */
 async function details(key: string, kind: VodKind, tmdbId: number, language: string): Promise<TmdbMatch | null> {
     const d = await tmdbGet<Details>(key, `/${kind === 'movie' ? 'movie' : 'tv'}/${tmdbId}`, {
-        append_to_response: 'external_ids', language
+        append_to_response: 'external_ids,images', language,
+        // Locandine nella lingua dell'utente e senza testo (null) per gli sfondi
+        include_image_language: `${language.split('-')[0]},null`
     });
     if (!d) return null;
     const imdb = d.external_ids?.imdb_id;
     return {
         imdbId: imdb && /^tt\d+$/.test(imdb) ? imdb : null,
-        poster: d.poster_path ? `${IMAGE_BASE}/w342${d.poster_path}` : null,
+        poster: (poster => poster ? `${IMAGE_BASE}/w342${poster}` : null)(pickPoster(d, language)),
         backdrop: d.backdrop_path ? `${IMAGE_BASE}/w1280${d.backdrop_path}` : null
     };
 }
@@ -168,13 +189,19 @@ export async function tmdbMatch(key: string, kind: VodKind, item: { tmdbId: stri
     return found ? details(key, kind, found, language) : null;
 }
 
-/** "Italiano" → "it-IT" per i titoli della ricerca TMDB. */
-export function tmdbLanguage(language: string): string {
-    const l = (language || '').toLowerCase();
-    if (l.startsWith('it')) return 'it-IT';
-    if (l.startsWith('es')) return 'es-ES';
-    if (l.startsWith('fr')) return 'fr-FR';
-    if (l.startsWith('de')) return 'de-DE';
-    if (l.startsWith('port')) return 'pt-PT';
-    return 'en-US';
+const LANGUAGE_CODES: [RegExp, string, string][] = [
+    [/^ital/, 'it', 'IT'], [/^engl/, 'en', 'US'], [/^espa|^span/, 'es', 'ES'], [/^fran|^fren/, 'fr', 'FR'],
+    [/^deut|^germ/, 'de', 'DE'], [/^port/, 'pt', 'PT'], [/^nede|^dutc/, 'nl', 'NL'], [/^pols|^poli/, 'pl', 'PL'],
+    [/^рус|^russ/, 'ru', 'RU'], [/^العرب|^arab/, 'ar', 'SA'], [/^中文|^chin/, 'zh', 'CN'], [/^日本|^japa/, 'ja', 'JP'], [/^한국|^kore/, 'ko', 'KR']
+];
+
+/**
+ * Lingua TMDB dalla lingua e dal paese della configurazione: "Italiano" + Svizzera → "it-CH".
+ * Il paese sceglie la variante regionale (titoli e locandine localizzate, es. pt-BR o es-MX).
+ */
+export function tmdbLanguage(language: string, country = ''): string {
+    const l = (language || '').trim().toLowerCase();
+    const found = LANGUAGE_CODES.find(([re]) => re.test(l));
+    const [lang, region] = found ? [found[1], found[2]] : ['en', 'US'];
+    return `${lang}-${/^[a-z]{2}$/i.test(country) ? (country.toLowerCase() === 'uk' ? 'GB' : country.toUpperCase()) : region}`;
 }

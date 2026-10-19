@@ -26,7 +26,7 @@ import type { UserConfig } from '../types';
 import { checkProxy, proxyLabel } from '../addon/proxy';
 import { getAccount, parseXtreamInput, XtreamAuthError } from '../playlist/xtream';
 import { checkTmdbKey, TmdbAuthError } from '../vod/tmdb';
-import { categoryCounts, clearVod, enqueueVod, getVodState } from '../vod/vod-service';
+import { categoryCounts, clearVod, enqueueVod, getVodState, resetMatches } from '../vod/vod-service';
 import { SEP } from '../vod/categories';
 import { lastEgress, outboundProxyLabel } from '../http-client';
 import { render } from '../web/jsx';
@@ -319,7 +319,8 @@ api.put('/configs/:id', wrap(async (req, res) => {
         if (hasSource(config)) void getPlaylist(config, record.id, { force: sourcesChanged }).catch(() => undefined);
         if (!vodEnabled(config)) {
             if (vodEnabled(record.config)) await clearVod(record.id);
-        } else if (!vodEnabled(record.config) || (['xtream_server', 'xtream_username', 'xtream_password', 'tmdb_api_key', 'language'] as const).some(k => config[k] !== record.config[k])) {
+        } else if (!vodEnabled(record.config) || (['xtream_server', 'xtream_username', 'xtream_password', 'tmdb_api_key', 'language', 'country'] as const).some(k => config[k] !== record.config[k])) {
+            if (config.language !== record.config.language || config.country !== record.config.country) await resetMatches(record.id);
             enqueueVod(record.id);
         }
         res.json({ success: true });

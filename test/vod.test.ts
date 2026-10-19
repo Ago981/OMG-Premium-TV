@@ -6,7 +6,7 @@ import { closeDatabase, db, initDatabase } from '../src/db';
 import { env } from '../src/env';
 import { initAppSecret } from '../src/security/crypto';
 import { createConfig, deleteConfigs, getConfig, normalizeConfig, updateConfig, ConfigValidationError } from '../src/store/config-store';
-import { cleanTitle } from '../src/vod/tmdb';
+import { cleanTitle, tmdbLanguage } from '../src/vod/tmdb';
 import { buildCategoryTree, usedCategories } from '../src/vod/categories';
 import { getVodState, listVod, matchPending, syncLists } from '../src/vod/vod-service';
 import { vodCatalog, vodMeta, vodStreams } from '../src/vod/vod-addon';
@@ -62,7 +62,11 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
             const u = new URL(req.url || '/', 'http://x');
             if (u.searchParams.get('api_key') !== KEY) return json(res, { status_message: 'Invalid API key' }, 401);
             if (u.pathname === '/configuration') return json(res, { images: {} });
-            if (u.pathname === '/movie/238') return json(res, { poster_path: '/padrino.jpg', backdrop_path: '/bg.jpg', external_ids: { imdb_id: 'tt0068646' } });
+            if (u.pathname === '/movie/238') {
+                // Locandina localizzata solo se la richiesta chiede l'italiano
+                const posters = u.searchParams.get('include_image_language')?.startsWith('it,') ? [{ file_path: '/padrino-it.jpg', iso_639_1: 'it', iso_3166_1: 'IT' }] : [];
+                return json(res, { poster_path: '/padrino.jpg', backdrop_path: '/bg.jpg', external_ids: { imdb_id: 'tt0068646' }, images: { posters } });
+            }
             if (u.pathname === '/tv/1396') return json(res, { poster_path: null, external_ids: { imdb_id: 'tt0903747' } });
             if (u.pathname === '/search/tv') {
                 return json(res, { results: u.searchParams.get('query') === 'Breaking Bad' ? [{ id: 1396, name: 'Breaking Bad', first_air_date: '2008-01-20' }] : [] });
@@ -101,6 +105,13 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         const input = { source_type: 'xtream', xtream_server: 'http://x', xtream_username: 'u', xtream_password: 'p', xtream_vod: 'true' };
         assert.throws(() => normalizeConfig(input, { strict: true }), ConfigValidationError);
         assert.equal(normalizeConfig({ ...input, tmdb_api_key: KEY }, { strict: true }).xtream_vod, true);
+    });
+
+    test('TMDB language from configuration language and country', () => {
+        assert.equal(tmdbLanguage('Italiano', 'ch'), 'it-CH');
+        assert.equal(tmdbLanguage('Italiano', ''), 'it-IT');
+        assert.equal(tmdbLanguage('Português', 'br'), 'pt-BR');
+        assert.equal(tmdbLanguage('English', 'uk'), 'en-GB');
     });
 
     test('titles are cleaned before searching TMDB', () => {
@@ -152,7 +163,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.deepEqual(metas.map(m => m.id), ['tt0068646', 'xtm:13'], 'newest first, the 4K copy merged under the same IMDb id');
         assert.equal(metas[0].name, 'Il Padrino', 'provider prefixes and year removed from the shown title');
         const posters = (metas as unknown as { poster: string }[]).map(m => m.poster);
-        assert.equal(posters[0], 'https://image.tmdb.org/t/p/w342/padrino.jpg', 'TMDB poster first');
+        assert.equal(posters[0], 'https://image.tmdb.org/t/p/w342/padrino-it.jpg', 'TMDB poster in the configuration language first');
         assert.match(posters[1], /^https:\/\/dummyimage\.com\/.*Film\+Sconosciuto/, 'placeholder when no poster exists');
         const series = await vodCatalog(ctx, 'series', {}) as { metas: { poster: string }[] };
         assert.equal(series.metas[0].poster, 'https://img/bb.jpg', 'provider cover when TMDB has none');

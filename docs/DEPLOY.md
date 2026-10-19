@@ -208,8 +208,11 @@ themoviedb.org → Impostazioni → API; va bene la chiave v3 o il Read Access T
   collegati usano l'ID IMDb, quindi in Stremio si apre la scheda ufficiale e lo stream compare anche
   aprendo il film o l'episodio dalle pagine di Stremio (Cinemeta). Gli altri restano visibili nei
   cataloghi dell'addon con la scheda del provider.
-- Nella stessa richiesta TMDB arrivano anche **copertina e sfondo** (nella lingua della configurazione):
-  hanno la precedenza su quelli del provider, spesso mancanti. Senza TMDB si usa la copertina del
+- Nella stessa richiesta TMDB arrivano anche **copertina e sfondo**. La lingua TMDB nasce da lingua e
+  paese della configurazione (Italiano + Svizzera → `it-CH`, Português + Brasile → `pt-BR`): si sceglie
+  la locandina in quella lingua e per quel paese, poi quella nella lingua, poi la principale. Cambiando
+  lingua o paese titoli e locandine vengono riletti. Le immagini TMDB
+  hanno la precedenza su quelle del provider, spesso mancanti. Senza TMDB si usa la copertina del
   provider, poi quella pubblica di Stremio per l'ID IMDb, infine un segnaposto con il titolo.
 - Gli abbinamenti sono salvati **per utente**, non in una cache condivisa: ogni configurazione usa la
   propria chiave e la propria quota TMDB, e cancellando la configurazione si cancellano anche i suoi titoli.

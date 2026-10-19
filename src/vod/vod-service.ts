@@ -208,6 +208,11 @@ export async function getVodState(configId: string): Promise<VodState> {
     };
 }
 
+/** Lingua o paese cambiati: titoli e locandine vanno riletti da TMDB nella nuova lingua. */
+export async function resetMatches(configId: string): Promise<void> {
+    await db().run('UPDATE vod_items SET match_state = 0 WHERE config_id = ?', [configId]);
+}
+
 /** Rimuove film/serie di una configurazione (opzione disattivata o account cambiato). */
 export async function clearVod(configId: string): Promise<void> {
     await db().batch([
@@ -288,7 +293,7 @@ interface PendingRow {
 /** Collega a IMDb i titoli non ancora abbinati, con la chiave TMDB dell'utente. */
 export async function matchPending(record: ConfigRecord, concurrency = 6): Promise<number> {
     const cfg = record.config;
-    const language = tmdbLanguage(cfg.language);
+    const language = tmdbLanguage(cfg.language, cfg.country);
     let done = 0;
     for (;;) {
         const rows = await db().all<PendingRow>(
