@@ -1,4 +1,4 @@
-import { appConfig } from '../config';
+import { configDisplayName } from '../config';
 import * as logger from '../logger';
 import { credentialsOf, vodUrl, xtreamCall } from '../playlist/xtream';
 import { getRuntime } from '../runtime';
@@ -116,7 +116,7 @@ function excludedOf(record: ConfigRecord): string[] {
 }
 
 /**
- * Cataloghi Film e Serie: stesso nome del catalogo dei canali (OMG+ · <nome configurazione>),
+ * Cataloghi Film e Serie: stesso nome del catalogo dei canali (OMG+ TV - <nome configurazione>),
  * il tipo (Film/Serie) lo indica già Stremio. Filtri = categorie e sottocategorie non escluse.
  */
 export async function vodManifestCatalogs(record: ConfigRecord, catalogId: string, catalogName: string) {
@@ -280,7 +280,7 @@ export async function vodStreams(ctx: Ctx, type: string, id: string): Promise<{ 
 
     // Stessa pipeline dei canali live (proxy, «Solo proxy», mascheramento); il resolver Python resta ai live
     const config = { ...record.config, resolver_enabled: false };
-    const label = record.label && !record.legacy ? `${appConfig.manifest.catalogName} · ${record.label}` : appConfig.manifest.catalogName;
+    const label = configDisplayName(record.label, record.legacy);
     const streams: StremioStream[] = [];
     for (const src of sources) {
         const channel = {

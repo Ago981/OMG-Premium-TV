@@ -186,7 +186,7 @@ scadenza e connessioni dell'abbonamento.
 
 Con l'opzione **Includi film e serie TV** l'addon aggiunge un catalogo di tipo *Film* e uno di tipo
 *Serie* (in Scopri, nella Home e nella ricerca di Stremio), con lo stesso nome del catalogo dei canali
-(`OMG+ · <nome configurazione>`). Le categorie del provider sono i filtri, con le **sottocategorie**:
+(`OMG+ TV - <nome configurazione>`). Le categorie del provider sono i filtri, con le **sottocategorie**:
 ricavate da `parent_id` se il pannello lo usa, altrimenti dal prefisso comune nei nomi (`IT | Azione`,
 `IT | Commedia` → `IT › Azione`, `IT › Commedia`). Scegliere una categoria madre mostra anche le figlie.
 I titoli sono mostrati senza prefissi e anno (`IT - Il Padrino (1972)` → `Il Padrino`, anno a parte) e le

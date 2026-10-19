@@ -1,4 +1,4 @@
-import { appConfig, NO_SIGNAL_URL, SETTINGS_GENRE, SETTINGS_LOGO } from '../config';
+import { appConfig, configDisplayName, NO_SIGNAL_URL, SETTINGS_GENRE, SETTINGS_LOGO } from '../config';
 import { ensureSources, enqueue, getGuides, type ChannelGuide } from '../epg/epg-service';
 import * as logger from '../logger';
 import { getPlaylist, type PlaylistHandle } from '../playlist/playlist-service';
@@ -111,7 +111,7 @@ export async function manifestHandler(ctx: AddonContext): Promise<Record<string,
     const m = appConfig.manifest;
     const addonId = record.legacy ? m.id : `${m.id}.${record.id}`;
     const catalogId = record.legacy ? m.catalogId : `${m.catalogId}_${record.id}`;
-    const catalogName = record.label && !record.legacy ? `${m.catalogName} · ${record.label}` : m.catalogName;
+    const catalogName = configDisplayName(record.label, record.legacy);
     const vod = vodEnabled(record.config);
     const vodCatalogs = vod
         ? await vodManifestCatalogs(record, catalogId, catalogName)
@@ -125,7 +125,7 @@ export async function manifestHandler(ctx: AddonContext): Promise<Record<string,
     return {
         id: addonId,
         version: m.version,
-        name: record.label && !record.legacy ? `${m.name} · ${record.label}` : m.name,
+        name: catalogName,
         description: m.description,
         logo: m.logo,
         resources,

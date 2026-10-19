@@ -158,7 +158,10 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         const manifest = await manifestHandler(ctx);
         assert.deepEqual(manifest.types, ['tv', 'movie', 'series']);
         const catalogs = manifest.catalogs as { type: string; id: string; name: string }[];
-        assert.deepEqual(catalogs.map(c => [c.type, c.name]), [['tv', 'OMG+'], ['movie', 'OMG+'], ['series', 'OMG+']], 'same name as the channel catalog');
+        assert.deepEqual(catalogs.map(c => [c.type, c.name]), [['tv', 'OMG+ TV'], ['movie', 'OMG+ TV'], ['series', 'OMG+ TV']], 'same name as the channel catalog');
+        const named = await manifestHandler({ ...ctx, record: { ...record, label: 'IPTV' } });
+        assert.equal(named.name, 'OMG+ TV - IPTV', 'addon and catalogs share the same base name');
+        assert.ok((named.catalogs as { name: string }[]).every(c => c.name === 'OMG+ TV - IPTV'));
 
         const { metas } = await vodCatalog(ctx, 'movie', {}) as { metas: { id: string; name: string }[] };
         assert.deepEqual(metas.map(m => m.id), ['tt0068646', 'xtm:13'], 'newest first, the 4K copy merged under the same IMDb id');

@@ -31,13 +31,14 @@ Correzioni sugli stream:
 - **Canali salvati in Stremio**: se la playlist cambia leggermente id o nome di un canale (es. aggiunta di «HD» o del suffisso paese) il canale viene ritrovato; se non esiste più compare un messaggio invece di una lista vuota.
 - **Film e serie aggiornati con la playlist**: niente più pulsante «Aggiorna ora»; si aggiornano all'intervallo della playlist e con il canale «Aggiorna playlist M3U» della configurazione.
 - **Copertine di film e serie**: si usano copertina e sfondo di TMDB, con la locandina scelta in base a lingua e paese della configurazione (es. Italiano + Svizzera → `it-CH`: prima la locandina italiana per quel paese, poi quella italiana, poi la principale), poi la copertina del provider, poi quella pubblica di Stremio per l'ID IMDb; senza nessuna, un segnaposto con il titolo. Nessuna richiesta TMDB in più: ID IMDb e immagini arrivano nella stessa chiamata. Dopo l'aggiornamento i titoli già collegati vengono riletti una volta.
+- **Nome coerente in Stremio**: addon e cataloghi (canali, film, serie) di ogni configurazione si chiamano `OMG+ TV - <nome configurazione>` (solo `OMG+ TV` senza nome). Per vedere il nuovo nome nelle configurazioni già installate va reinstallato l'addon.
 - **Wizard**: EPG attivo di default; lingua e nome della configurazione subito sotto il paese, nel primo passaggio; con un account Xtream, nel campo EPG la nota «lascia vuoto per usare la guida prevista dalla configurazione Xtream».
 - **Nomi puliti**: categorie e canali che iniziano e/o finiscono con 3 o più trattini (`-----DOCUMENTARI-----`, `-----RAI 1-----`) diventano `DOCUMENTARI` e `RAI 1`, sia nelle playlist M3U sia negli account Xtream (live, film e serie). Gli id dei canali non cambiano. Dopo l'aggiornamento playlist e film/serie vengono riscaricati una volta per applicare i nomi puliti (anche alle categorie già nascoste).
 
 ### 🚀 Versione 8.4.0
 
 Film e serie Xtream in Scopri:
-- I cataloghi Film e Serie hanno lo stesso nome del catalogo dei canali (`OMG+ · <nome configurazione>`): il tipo lo indica già Stremio.
+- I cataloghi Film e Serie hanno lo stesso nome del catalogo dei canali (`OMG+ TV - <nome configurazione>`): il tipo lo indica già Stremio.
 - **Sottocategorie** come filtri (da `parent_id` o dal prefisso comune, es. `IT | Azione` → `IT › Azione`); la categoria madre include le figlie.
 - **Categorie da nascondere**, scelte con le caselle nella pagina della configurazione: spariscono da cataloghi, ricerca e stream.
 - Titoli puliti in elenco (`IT - Il Padrino (1972)` → `Il Padrino`) e paginazione corretta: le copie dello stesso titolo sono unite nel database, ogni pagina ha titoli unici.

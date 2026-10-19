@@ -60,7 +60,7 @@ function loadConfig(): AppConfig {
                 description: custom.addonDescription || base.manifest.description,
                 logo: custom.addonLogo || base.manifest.logo,
                 catalogId: 'omg_plus_tv',
-                catalogName: 'OMG+'
+                catalogName: 'OMG+ TV'
             }
         };
     } catch (e) {
@@ -74,3 +74,12 @@ export const appConfig = loadConfig();
 export const SETTINGS_LOGO = 'https://raw.githubusercontent.com/mccoy88f/OMG-TV-Stremio-Addon/refs/heads/main/tv.png';
 export const NO_SIGNAL_URL = 'https://static.vecteezy.com/system/resources/previews/001/803/236/mp4/no-signal-bad-tv-free-video.mp4';
 export const SETTINGS_GENRE = '⚙️';
+
+/**
+ * Nome mostrato in Stremio per una configurazione (addon e cataloghi): "OMG+ TV - <nome>",
+ * oppure solo "OMG+ TV" senza nome. Stessa base per tutte le configurazioni.
+ */
+export function configDisplayName(label: string, legacy = false): string {
+    const base = appConfig.manifest.catalogName;
+    return label && !legacy ? `${base} - ${label}` : base;
+}
