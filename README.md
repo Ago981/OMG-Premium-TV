@@ -24,24 +24,34 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 
 ## 🔄 Changelog di OMG Premium TV
 
-### 🚀 Versione 8.4.1 (Attuale)
+### 🚀 Versione 8.5.0 (Attuale)
 
-Correzioni sugli stream:
-- **Stream via proxy mai scartati**: la verifica rapida parte dal server (via WARP) e può fallire anche quando il player dal dispositivo funziona (timeout di EasyProxy, blocchi del dominio del proxy verso WARP). Ora lo stream via proxy viene sempre offerto, segnato con ⚠️ se la verifica non è andata; con «Solo proxy» resta escluso solo il link diretto.
-- **Canali salvati in Stremio**: se la playlist cambia leggermente id o nome di un canale (es. aggiunta di «HD» o del suffisso paese) il canale viene ritrovato; se non esiste più compare un messaggio invece di una lista vuota.
-- **Film e serie aggiornati con la playlist**: niente più pulsante «Aggiorna ora»; si aggiornano all'intervallo della playlist e con il canale «Aggiorna playlist M3U» della configurazione.
-- **Copertine di film e serie**: si usano copertina e sfondo di TMDB, con la locandina scelta in base a lingua e paese della configurazione (es. Italiano + Svizzera → `it-CH`: prima la locandina italiana per quel paese, poi quella italiana, poi la principale), poi la copertina del provider, poi quella pubblica di Stremio per l'ID IMDb; senza nessuna, un segnaposto con il titolo. Nessuna richiesta TMDB in più: ID IMDb e immagini arrivano nella stessa chiamata. Dopo l'aggiornamento i titoli già collegati vengono riletti una volta.
-- **Nome coerente in Stremio**: addon e cataloghi (canali, film, serie) di ogni configurazione si chiamano `OMG+ TV - <nome configurazione>` (solo `OMG+ TV` senza nome). Per vedere il nuovo nome nelle configurazioni già installate va reinstallato l'addon.
-- **Segnaposto colorati**: senza nessuna locandina, film e serie hanno un segnaposto con il titolo come i canali, ma con colori propri: viola i canali, rosso i film, blu petrolio le serie.
-- **Wizard**: EPG attivo di default; lingua e nome della configurazione subito sotto il paese, nel primo passaggio; con un account Xtream, nel campo EPG la nota «lascia vuoto per usare la guida prevista dalla configurazione Xtream».
-- **Xtream con proxy**: gli stream Xtream non vengono più verificati dal server attraverso il proxy. Ogni prova occupava una delle connessioni dell'abbonamento (spesso una sola) e il provider rispondeva 401 alla prova o al player. Nei log degli stream non verificati compare anche il testo della risposta del proxy, per distinguere la password del proxy sbagliata dall'errore della sorgente.
-- **Xtream via proxy (401)**: molti pannelli Xtream rifiutano gli stream chiesti con uno User-Agent da browser. L'addon passava al proxy lo User-Agent Chrome predefinito; ora per i link Xtream (`/live/`, `/movie/`, `/series/`) passa quello di un player (`VLC/3.0.20 LibVLC/3.0.20`, modificabile con `XTREAM_USER_AGENT`), a meno che la playlist non ne indichi uno. Vale per EasyProxy e MediaFlow; WARP del proxy invariato.
-- **Segnaposto in grassetto e schede coerenti**: i segnaposto di canali, film e serie passano da dummyimage (nessuna opzione per il grassetto) a placehold.co, sempre servizio esterno, con font Montserrat e titolo su più righe. La scheda di film e serie usa la stessa copertina controllata del catalogo: prima, per le serie, metteva la copertina dei dettagli del provider senza controllarla e Nuvio mostrava un riquadro nero.
-- **Locandine di film e serie più affidabili**: l'anno scritto in fondo al nome senza parentesi («VisionQuest 2026») non entra più nella ricerca TMDB e non compare nel titolo; se non trova, riprova senza filtro sull'anno: per le serie basta il titolo (l'anno è spesso quello della stagione), per i film solo se quel titolo appartiene a un unico film, così i remake non vengono confusi. Le copertine del provider che non si aprono vengono scartate (segnaposto al loro posto invece di un riquadro vuoto). Dopo l'aggiornamento i titoli non trovati vengono ricercati una volta.
-- **Scadenza dell'account Xtream** nel passaggio Avanzate: stato, data di scadenza con i giorni mancanti e connessioni (⚠️ se mancano 15 giorni o meno o l'account non è attivo). Tolto invece il riepilogo tecnico di film e serie (conteggi e collegamenti IMDb): resta solo l'eventuale errore, ad esempio una chiave TMDB non valida.
+**🎬 Film e serie Xtream: locandine e schede**
+- **Locandine TMDB** scelte in base a lingua e paese della configurazione (es. Italiano + Svizzera → `it-CH`): prima la locandina italiana per quel paese, poi quella italiana, poi la principale. Anche lo sfondo della scheda arriva da TMDB. Nessuna richiesta in più: ID IMDb e immagini arrivano nella stessa chiamata.
+- **Ricerca TMDB più precisa**: l'anno scritto in fondo al nome senza parentesi («VisionQuest 2026») non entra più nella ricerca né nel titolo mostrato. Se non trova, riprova senza filtro sull'anno: per le serie basta il titolo (l'anno è spesso quello della stagione), per i film solo se quel titolo appartiene a un unico film, così i remake non vengono confusi.
+- **Niente più riquadri vuoti**: le copertine del provider vengono controllate una volta e scartate se non si aprono. Ordine: locandina TMDB → copertina del provider funzionante → copertina pubblica di Stremio per l'ID IMDb → segnaposto. La scheda usa la stessa copertina del catalogo (prima, per le serie, Nuvio mostrava un riquadro nero).
+- **Segnaposto** di canali, film e serie generati da placehold.co (servizio esterno, nessun carico sul server) con font Montserrat, titolo su più righe e colori per tipo: viola i canali, rosso i film, blu petrolio le serie.
+- **Aggiornamento insieme alla playlist**: film e serie si aggiornano all'intervallo della playlist e con il canale «Aggiorna playlist M3U»; tolto il pulsante «Aggiorna ora» e il riepilogo tecnico (resta solo un eventuale errore, es. chiave TMDB non valida).
+
+**📡 Xtream**
+- **Scadenza dell'account** nel passaggio Avanzate: stato, data di scadenza con i giorni mancanti e connessioni (⚠️ se mancano 15 giorni o meno o l'account non è attivo).
+- **Stream via proxy (errore 401)**: molti pannelli Xtream rifiutano gli stream chiesti con uno User-Agent da browser. Per i link Xtream il proxy (EasyProxy o MediaFlow) riceve ora lo User-Agent di un player (`VLC/3.0.20 LibVLC/3.0.20`, modificabile con `XTREAM_USER_AGENT`); il WARP del proxy resta attivo.
+- Gli stream Xtream non vengono più verificati dal server prima di offrirli: ogni prova occupava una delle connessioni dell'abbonamento (spesso una sola).
+- I film `.mp4` via EasyProxy passano dall'endpoint universale `/proxy/manifest.m3u8`: `/proxy/stream` con alcuni pannelli risponde 500 «Bad status line».
+
+**🧭 Interfaccia**
+- **Nome coerente in Stremio**: addon e cataloghi (canali, film, serie) di ogni configurazione si chiamano `OMG+ TV - <nome configurazione>` (solo `OMG+ TV` senza nome).
+- **Wizard**: EPG attivo di default; lingua e nome della configurazione subito sotto il paese; con un account Xtream, nel campo EPG la nota «lascia vuoto per usare la guida prevista dalla configurazione Xtream».
 - **Proxy «Disattivato»**: nuova voce nel tipo di proxy. Gli stream vengono aperti direttamente dal dispositivo; URL e password restano salvati per riattivarlo dopo.
-- **Film Xtream `.mp4` via EasyProxy**: passano dall'endpoint universale `/proxy/manifest.m3u8` invece di `/proxy/stream`, che con alcuni pannelli risponde 500 «Bad status line».
-- **Nomi puliti**: categorie e canali che iniziano e/o finiscono con 3 o più trattini (`-----DOCUMENTARI-----`, `-----RAI 1-----`) diventano `DOCUMENTARI` e `RAI 1`, sia nelle playlist M3U sia negli account Xtream (live, film e serie). Gli id dei canali non cambiano. Dopo l'aggiornamento playlist e film/serie vengono riscaricati una volta per applicare i nomi puliti (anche alle categorie già nascoste).
+
+> ℹ️ *Dopo l'aggiornamento*: i titoli di film e serie vengono ricercati su TMDB una volta per avere le nuove locandine (usa la quota TMDB di ogni utente, qualche minuto per i listini grandi). Per vedere il nuovo nome in Stremio va reinstallato l'addon con lo stesso URL.
+
+### 🚀 Versione 8.4.1
+
+Correzioni sugli stream e sui nomi:
+- **Stream via proxy mai scartati**: la verifica rapida parte dal server (via WARP) e può fallire anche quando il player dal dispositivo funziona. Ora lo stream via proxy viene sempre offerto, segnato con ⚠️ se la verifica non è andata; con «Solo proxy» resta escluso solo il link diretto. Nei log compare anche il testo della risposta del proxy.
+- **Canali salvati in Stremio**: se la playlist cambia leggermente id o nome di un canale (es. aggiunta di «HD» o del suffisso paese) il canale viene ritrovato; se non esiste più compare un messaggio invece di una lista vuota.
+- **Nomi puliti**: categorie e canali che iniziano e/o finiscono con 3 o più trattini (`-----DOCUMENTARI-----`, `-----RAI 1-----`) diventano `DOCUMENTARI` e `RAI 1`, sia nelle playlist M3U sia negli account Xtream (live, film e serie). Gli id dei canali non cambiano.
 
 ### 🚀 Versione 8.4.0
 
