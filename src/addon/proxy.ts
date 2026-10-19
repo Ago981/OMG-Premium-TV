@@ -168,17 +168,24 @@ function mediaflowUrl(base: string, streamUrl: string, headers: StreamHeaders, c
     return `${base}/proxy/hls/manifest.m3u8?${params}`;
 }
 
+/** Link nel formato Xtream: /live|movie|series/<utente>/<password>/<id>.<estensione> */
+export const XTREAM_LINK_RE = /\/(live|movie|series)\/[^/]+\/[^/]+\/[^/?]+\.[a-z0-9]{2,5}(\?|$)/i;
+
 /** URL EasyProxy: endpoint universale con riconoscimento automatico; mp4 come stream diretto. */
 function easyproxyUrl(base: string, streamUrl: string, headers: StreamHeaders, cfg: UserConfig, clearkey?: string): string {
     const params = new URLSearchParams({ api_password: cfg.proxy_pwd });
+    // Link Xtream: EasyProxy li chiede al provider dal proprio IP invece che da WARP (resta un link proxato)
+    const noWarp = cfg.xtream_proxy_no_warp !== false && XTREAM_LINK_RE.test(streamUrl);
     if (streamUrl.endsWith('.mp4') && !clearkey) {
         params.set('d', streamUrl);
         headerParams(params, headers);
+        if (noWarp) params.set('warp', 'off');
         return `${base}/proxy/stream?${params}`;
     }
     params.set('url', streamUrl);
     headerParams(params, headers);
     if (clearkey) params.set('clearkey', clearkey);
+    if (noWarp) params.set('warp', 'off');
     return `${base}/proxy/manifest.m3u8?${params}`;
 }
 

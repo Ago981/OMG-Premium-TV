@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { env } from '../src/env';
 import { buildStreams } from '../src/addon/streams';
+import { buildProxyUrl } from '../src/addon/proxy';
 import { normalizeConfig } from '../src/store/config-store';
 import type { Channel } from '../src/types';
 import type { PythonResolver } from '../src/python/python-resolver';
@@ -46,4 +47,17 @@ test('Xtream streams are not checked through the proxy', async () => {
     } finally {
         Object.assign(env, saved);
     }
+});
+
+test('EasyProxy fetches Xtream links without its WARP (option on by default)', () => {
+    const cfg = normalizeConfig({ proxy: 'https://prox.example', proxy_pwd: 'pwd', proxy_type: 'easyproxy' });
+    const movie = new URL(buildProxyUrl('easyproxy', 'http://p.example/movie/u/p/43223.mkv', {}, cfg) as string);
+    assert.equal(movie.searchParams.get('warp'), 'off');
+    const mp4 = new URL(buildProxyUrl('easyproxy', 'http://p.example/movie/u/p/1.mp4', {}, cfg) as string);
+    assert.equal(mp4.pathname, '/proxy/stream');
+    assert.equal(mp4.searchParams.get('warp'), 'off');
+    const other = new URL(buildProxyUrl('easyproxy', 'https://cdn.example/live/index.m3u8', {}, cfg) as string);
+    assert.equal(other.searchParams.get('warp'), null, 'non-Xtream links keep the proxy WARP');
+    const off = normalizeConfig({ proxy: 'https://prox.example', proxy_pwd: 'pwd', xtream_proxy_no_warp: false });
+    assert.equal(new URL(buildProxyUrl('easyproxy', 'http://p.example/live/u/p/1.ts', {}, off) as string).searchParams.get('warp'), null);
 });

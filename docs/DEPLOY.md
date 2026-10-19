@@ -225,6 +225,15 @@ themoviedb.org → Impostazioni → API; va bene la chiave v3 o il Read Access T
 - Gli stream di film ed episodi passano dalla stessa pipeline dei canali (proxy, "Solo proxy",
   mascheramento). La chiave TMDB non compare nelle risposte dell'addon né nei log.
 
+### Xtream ed EasyProxy
+
+Molti pannelli Xtream (XUI e derivati) accettano le chiamate API da qualsiasi IP ma rifiutano gli stream
+chiesti da reti di VPN/datacenter, Cloudflare WARP compreso: nel log di EasyProxy compare
+`Upstream returned error 401 [... route=WARP ...]`. Con l'opzione **Link Xtream: EasyProxy senza il suo
+WARP** (passaggio Proxy, attiva di default) l'addon aggiunge `warp=off` agli URL di EasyProxy dei soli
+link Xtream: EasyProxy li chiede al provider dal proprio indirizzo, lo stream resta proxato e l'IP
+dell'utente nascosto. MediaFlow non ha un parametro equivalente.
+
 Stalker (portali MAG) non è supportato.
 
 ## 5. Nuvio e altre app compatibili

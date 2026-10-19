@@ -1,6 +1,8 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        xtream_proxy_no_warp: "Xtream links: EasyProxy without its WARP",
+        xtream_proxy_no_warp_hint: "Many Xtream providers reject Cloudflare WARP addresses on streams (error 401). EasyProxy then fetches Xtream links from its own address: they still go through the proxy and your IP stays hidden.",
         epg_xtream_hint: "Leave empty to use the TV guide provided by the Xtream configuration.",
         vod_status_label: "Movies and series",
         vod_update_hint: "Movies and series are updated together with the playlist: at the update interval and with the \"Refresh M3U playlist\" channel.",
@@ -179,6 +181,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        xtream_proxy_no_warp: "Link Xtream: EasyProxy senza il suo WARP",
+        xtream_proxy_no_warp_hint: "Molti provider Xtream rifiutano gli indirizzi Cloudflare WARP sugli stream (errore 401). Così EasyProxy chiede i link Xtream dal proprio indirizzo: passano comunque dal proxy e il tuo IP resta nascosto.",
         epg_xtream_hint: "Lascia vuoto per usare la guida TV prevista dalla configurazione Xtream.",
         vod_status_label: "Film e serie",
         vod_update_hint: "Film e serie si aggiornano insieme alla playlist: all'intervallo di aggiornamento e con il canale «Aggiorna playlist M3U».",
@@ -357,6 +361,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        xtream_proxy_no_warp: "Enlaces Xtream: EasyProxy sin su WARP",
+        xtream_proxy_no_warp_hint: "Muchos proveedores Xtream rechazan las direcciones Cloudflare WARP en los streams (error 401). Así EasyProxy pide los enlaces Xtream desde su propia dirección: siguen pasando por el proxy y tu IP sigue oculta.",
         epg_xtream_hint: "Déjalo vacío para usar la guía de TV prevista por la configuración Xtream.",
         vod_status_label: "Películas y series",
         vod_update_hint: "Películas y series se actualizan junto con la playlist: en el intervalo de actualización y con el canal «Actualizar playlist M3U».",
@@ -483,6 +489,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        xtream_proxy_no_warp: "Liens Xtream : EasyProxy sans son WARP",
+        xtream_proxy_no_warp_hint: "Beaucoup de fournisseurs Xtream refusent les adresses Cloudflare WARP sur les flux (erreur 401). EasyProxy demande alors les liens Xtream depuis sa propre adresse : ils passent toujours par le proxy et votre IP reste masquée.",
         epg_xtream_hint: "Laissez vide pour utiliser le guide TV prévu par la configuration Xtream.",
         vod_status_label: "Films et séries",
         vod_update_hint: "Films et séries sont mis à jour avec la playlist : à l'intervalle de mise à jour et avec la chaîne « Actualiser la playlist M3U ».",

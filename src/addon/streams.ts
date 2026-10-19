@@ -6,7 +6,7 @@ import { countryLangAbbr } from '../presets';
 import { encrypt } from '../security/crypto';
 import type { Channel, StreamHeaders, StremioStream, UserConfig } from '../types';
 import type { PythonResolver } from '../python/python-resolver';
-import { buildProxyUrl, proxyLabel, resolveProxyKind, streamType, type ProxyKind } from './proxy';
+import { buildProxyUrl, proxyLabel, XTREAM_LINK_RE, resolveProxyKind, streamType, type ProxyKind } from './proxy';
 
 /**
  * Costruzione degli stream: originali, via proxy (MediaFlow o EasyProxy), risolti dal resolver Python.
@@ -16,7 +16,6 @@ import { buildProxyUrl, proxyLabel, resolveProxyKind, streamType, type ProxyKind
 
 const EXCLUDED_DOMAINS = ['pluto.tv'];
 const HEALTH_TTL_MS = 60 * 1000;
-const XTREAM_STREAM_RE = /\/(live|movie|series)\/[^/]+\/[^/]+\/[^/]+\.[a-z0-9]{2,5}(\?|$)/i;
 const health = new Map<string, { at: number; ok: boolean }>();
 
 export interface StreamContext {
@@ -45,7 +44,7 @@ function pick(headers: StreamHeaders, ...names: string[]): string | undefined {
 async function proxyHealthy(proxyUrl: string, input: StreamInput, logKey: string): Promise<boolean> {
     // Stream Xtream (/live|movie|series/<user>/<pass>/<id>.<ext>): niente verifica. Ogni prova occupa una delle
     // connessioni dell'abbonamento (spesso una sola) e il provider rifiuta poi il player o la prova stessa (401).
-    if (XTREAM_STREAM_RE.test(input.url)) return true;
+    if (XTREAM_LINK_RE.test(input.url)) return true;
     const cached = health.get(proxyUrl);
     if (cached && Date.now() - cached.at < HEALTH_TTL_MS) return cached.ok;
     const headers = input.headers;
