@@ -84,6 +84,8 @@ export const env = {
     httpTimeoutMs: int('HTTP_TIMEOUT_MS', 60000),
     /** Tempo massimo della verifica degli stream via proxy (solo indicativa, non scarta lo stream). */
     proxyCheckTimeoutMs: int('PROXY_CHECK_TIMEOUT_MS', 4000),
+    /** User-Agent da player usato dal proxy per i link Xtream (molti pannelli rifiutano quelli da browser). */
+    xtreamUserAgent: str('XTREAM_USER_AGENT', 'VLC/3.0.20 LibVLC/3.0.20'),
     maxDownloadMb: int('MAX_DOWNLOAD_MB', 300),
 
     /** API TMDB (film e serie Xtream): ogni utente usa la propria chiave. */

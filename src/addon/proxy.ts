@@ -1,3 +1,4 @@
+import { env } from '../env';
 import { appConfig } from '../config';
 import { request } from '../http-client';
 import * as logger from '../logger';
@@ -135,8 +136,22 @@ function pick(headers: StreamHeaders, ...names: string[]): string | undefined {
     return undefined;
 }
 
-function headerParams(params: URLSearchParams, headers: StreamHeaders): void {
-    params.set('h_user-agent', pick(headers, 'User-Agent', 'user-agent') || appConfig.defaultUserAgent);
+/** Link nel formato Xtream: /live|movie|series/<utente>/<password>/<id>.<estensione> */
+export const XTREAM_LINK_RE = /\/(live|movie|series)\/[^/]+\/[^/]+\/[^/?]+\.[a-z0-9]{2,5}(\?|$)/i;
+
+/**
+ * User-Agent che il proxy usa verso la sorgente. Molti pannelli Xtream rifiutano (401) gli User-Agent
+ * da browser e accettano solo quelli dei player IPTV: per i link Xtream, se la playlist non ne indica
+ * uno, si usa quello di un player invece del Chrome predefinito.
+ */
+function proxyUserAgent(headers: StreamHeaders, streamUrl: string): string {
+    const ua = pick(headers, 'User-Agent', 'user-agent');
+    if (XTREAM_LINK_RE.test(streamUrl) && (!ua || ua === appConfig.defaultUserAgent)) return env.xtreamUserAgent;
+    return ua || appConfig.defaultUserAgent;
+}
+
+function headerParams(params: URLSearchParams, headers: StreamHeaders, streamUrl: string): void {
+    params.set('h_user-agent', proxyUserAgent(headers, streamUrl));
     const referer = pick(headers, 'referer', 'Referer', 'referrer', 'Referrer');
     if (referer) params.set('h_referer', referer);
     const origin = pick(headers, 'origin', 'Origin');
@@ -155,7 +170,7 @@ export function streamType(url: string): StreamType {
 /** URL MediaFlow: endpoint scelto in base all'estensione, come nella versione precedente. */
 function mediaflowUrl(base: string, streamUrl: string, headers: StreamHeaders, cfg: UserConfig, clearkey?: string): string {
     const params = new URLSearchParams({ api_password: cfg.proxy_pwd, d: streamUrl });
-    headerParams(params, headers);
+    headerParams(params, headers, streamUrl);
     if (clearkey) {
         const pairs = clearkey.split(',').map(p => p.split(':'));
         params.set('key_id', pairs.map(p => p[0]).join(','));
@@ -168,24 +183,17 @@ function mediaflowUrl(base: string, streamUrl: string, headers: StreamHeaders, c
     return `${base}/proxy/hls/manifest.m3u8?${params}`;
 }
 
-/** Link nel formato Xtream: /live|movie|series/<utente>/<password>/<id>.<estensione> */
-export const XTREAM_LINK_RE = /\/(live|movie|series)\/[^/]+\/[^/]+\/[^/?]+\.[a-z0-9]{2,5}(\?|$)/i;
-
 /** URL EasyProxy: endpoint universale con riconoscimento automatico; mp4 come stream diretto. */
 function easyproxyUrl(base: string, streamUrl: string, headers: StreamHeaders, cfg: UserConfig, clearkey?: string): string {
     const params = new URLSearchParams({ api_password: cfg.proxy_pwd });
-    // Link Xtream: EasyProxy li chiede al provider dal proprio IP invece che da WARP (resta un link proxato)
-    const noWarp = cfg.xtream_proxy_no_warp !== false && XTREAM_LINK_RE.test(streamUrl);
     if (streamUrl.endsWith('.mp4') && !clearkey) {
         params.set('d', streamUrl);
-        headerParams(params, headers);
-        if (noWarp) params.set('warp', 'off');
+        headerParams(params, headers, streamUrl);
         return `${base}/proxy/stream?${params}`;
     }
     params.set('url', streamUrl);
-    headerParams(params, headers);
+    headerParams(params, headers, streamUrl);
     if (clearkey) params.set('clearkey', clearkey);
-    if (noWarp) params.set('warp', 'off');
     return `${base}/proxy/manifest.m3u8?${params}`;
 }
 

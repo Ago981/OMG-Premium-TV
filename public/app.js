@@ -182,7 +182,7 @@
             .sort(function (a, b) { return a.name.localeCompare(b.name, lang); });
     }
 
-    var CONFIG_FIELDS = ['label', 'country', 'source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'xtream_vod', 'tmdb_api_key', 'vod_excluded', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'xtream_proxy_no_warp', 'mask_streams',
+    var CONFIG_FIELDS = ['label', 'country', 'source_type', 'm3u', 'xtream_server', 'xtream_username', 'xtream_password', 'xtream_format', 'xtream_vod', 'tmdb_api_key', 'vod_excluded', 'epg', 'epg_enabled', 'smart_epg', 'language', 'proxy_type', 'proxy', 'proxy_pwd', 'force_proxy', 'mask_streams',
         'aio_compatible', 'id_suffix', 'remapper_path', 'update_interval', 'python_script_url', 'python_update_interval',
         'resolver_script', 'resolver_enabled', 'resolver_update_interval'];
 

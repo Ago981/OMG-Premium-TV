@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { env } from '../src/env';
+import { appConfig } from '../src/config';
 import { buildStreams } from '../src/addon/streams';
 import { buildProxyUrl } from '../src/addon/proxy';
 import { normalizeConfig } from '../src/store/config-store';
@@ -49,15 +50,13 @@ test('Xtream streams are not checked through the proxy', async () => {
     }
 });
 
-test('EasyProxy fetches Xtream links without its WARP (option on by default)', () => {
+test('Xtream links reach the proxy with a player User-Agent', () => {
     const cfg = normalizeConfig({ proxy: 'https://prox.example', proxy_pwd: 'pwd', proxy_type: 'easyproxy' });
-    const movie = new URL(buildProxyUrl('easyproxy', 'http://p.example/movie/u/p/43223.mkv', {}, cfg) as string);
-    assert.equal(movie.searchParams.get('warp'), 'off');
-    const mp4 = new URL(buildProxyUrl('easyproxy', 'http://p.example/movie/u/p/1.mp4', {}, cfg) as string);
-    assert.equal(mp4.pathname, '/proxy/stream');
-    assert.equal(mp4.searchParams.get('warp'), 'off');
-    const other = new URL(buildProxyUrl('easyproxy', 'https://cdn.example/live/index.m3u8', {}, cfg) as string);
-    assert.equal(other.searchParams.get('warp'), null, 'non-Xtream links keep the proxy WARP');
-    const off = normalizeConfig({ proxy: 'https://prox.example', proxy_pwd: 'pwd', xtream_proxy_no_warp: false });
-    assert.equal(new URL(buildProxyUrl('easyproxy', 'http://p.example/live/u/p/1.ts', {}, off) as string).searchParams.get('warp'), null);
+    const ua = (url: string, headers = {}) => new URL(buildProxyUrl('easyproxy', url, headers, cfg) as string).searchParams.get('h_user-agent');
+    assert.equal(ua('http://p.example/movie/u/p/43223.mkv'), env.xtreamUserAgent);
+    assert.equal(ua('http://p.example/live/u/p/101.m3u8', { 'User-Agent': appConfig.defaultUserAgent }), env.xtreamUserAgent, 'default Chrome UA replaced');
+    assert.equal(ua('http://p.example/live/u/p/101.ts', { 'User-Agent': 'TiviMate/4.7' }), 'TiviMate/4.7', 'a UA from the playlist is kept');
+    assert.equal(ua('https://cdn.example/live/index.m3u8'), appConfig.defaultUserAgent, 'other links unchanged');
+    const mf = new URL(buildProxyUrl('mediaflow', 'http://p.example/movie/u/p/1.mp4', {}, cfg) as string);
+    assert.equal(mf.searchParams.get('h_user-agent'), env.xtreamUserAgent, 'MediaFlow too');
 });

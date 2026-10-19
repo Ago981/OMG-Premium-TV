@@ -204,8 +204,6 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
             </div>
             <Check name="force_proxy" checked={c.force_proxy} labelKey="force_proxy" label="Proxy only" />
             <small className="hint" data-i18n="force_proxy_hint">Show only streams through the proxy. Exclude direct fallback streams if proxy fails.</small>
-            <Check name="xtream_proxy_no_warp" checked={c.xtream_proxy_no_warp !== false} labelKey="xtream_proxy_no_warp" label="Xtream links: EasyProxy without its WARP" />
-            <small className="hint" data-i18n="xtream_proxy_no_warp_hint">Many Xtream providers reject Cloudflare WARP addresses on streams (error 401). EasyProxy then fetches Xtream links from its own address: they still go through the proxy and your IP stays hidden.</small>
             {props.masking ? (
                 <>
                     <Check name="mask_streams" checked={c.mask_streams} labelKey="mask_streams" label="Hide real stream URLs" />

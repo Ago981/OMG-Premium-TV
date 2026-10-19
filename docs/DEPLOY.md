@@ -225,14 +225,12 @@ themoviedb.org → Impostazioni → API; va bene la chiave v3 o il Read Access T
 - Gli stream di film ed episodi passano dalla stessa pipeline dei canali (proxy, "Solo proxy",
   mascheramento). La chiave TMDB non compare nelle risposte dell'addon né nei log.
 
-### Xtream ed EasyProxy
+### Xtream e proxy: User-Agent
 
-Molti pannelli Xtream (XUI e derivati) accettano le chiamate API da qualsiasi IP ma rifiutano gli stream
-chiesti da reti di VPN/datacenter, Cloudflare WARP compreso: nel log di EasyProxy compare
-`Upstream returned error 401 [... route=WARP ...]`. Con l'opzione **Link Xtream: EasyProxy senza il suo
-WARP** (passaggio Proxy, attiva di default) l'addon aggiunge `warp=off` agli URL di EasyProxy dei soli
-link Xtream: EasyProxy li chiede al provider dal proprio indirizzo, lo stream resta proxato e l'IP
-dell'utente nascosto. MediaFlow non ha un parametro equivalente.
+Molti pannelli Xtream (XUI e derivati) rifiutano con **401** gli stream chiesti con uno User-Agent da
+browser e accettano solo quelli dei player IPTV. Per i link Xtream l'addon passa quindi al proxy
+(EasyProxy o MediaFlow, parametro `h_user-agent`) lo User-Agent di un player, `VLC/3.0.20 LibVLC/3.0.20`
+(variabile `XTREAM_USER_AGENT`), salvo che la playlist ne indichi uno suo.
 
 Stalker (portali MAG) non è supportato.
 
@@ -276,6 +274,7 @@ Ogni URL EPG viene scaricato **una volta sola** e condiviso tra tutte le configu
 | `EPG_FUTURE_DAYS` | `7` | giorni di programmazione conservati |
 | `ACTIVE_CONFIG_DAYS` | `14` | oltre questo periodo di inutilizzo le sorgenti EPG non vengono più aggiornate |
 | `PROXY_CHECK_TIMEOUT_MS` | `4000` | verifica rapida degli stream via proxy: solo indicativa, uno stream non verificato viene comunque offerto (⚠️) |
+| `XTREAM_USER_AGENT` | `VLC/3.0.20 LibVLC/3.0.20` | User-Agent usato dal proxy per i link Xtream |
 | `TMDB_API_BASE` | `https://api.themoviedb.org/3` | API TMDB per film e serie Xtream |
 | `TMDB_RATE_PER_SEC` | `35` | richieste al secondo verso TMDB per ogni chiave utente |
 | `DATA_DIR` | `./data` | file di lavoro degli script Python |

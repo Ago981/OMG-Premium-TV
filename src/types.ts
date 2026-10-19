@@ -34,8 +34,6 @@ export interface UserConfig {
     mask_streams: boolean;
     /** Se true (predefinito se c'è un proxy), mostra SOLO stream proxati ed esclude i fallback diretti. */
     force_proxy: boolean;
-    /** Link Xtream via EasyProxy senza il WARP del proxy (warp=off): molti provider bloccano gli IP WARP sugli stream. */
-    xtream_proxy_no_warp: boolean;
     /** Modalità compatibile con AIOStreams: aggiunge il suffisso [PAESE] a canali e stream. */
     aio_compatible: boolean;
     /** Tipo di proxy: rilevato automaticamente oppure forzato. */
