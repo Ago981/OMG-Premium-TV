@@ -123,7 +123,7 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                 <small className="hint" data-i18n="xtream_epg_hint">The provider's TV guide (xmltv.php) is used automatically when the EPG field is empty.</small>
                 <Check name="xtream_vod" checked={props.c.xtream_vod} labelKey="xtream_vod" label="Include movies and TV series" />
                 <div className="vod-fields">
-                    <small className="hint" data-i18n="xtream_vod_hint">Adds Movies and Series catalogs. With a TMDB key the titles are linked to their IMDb pages, so the stream also appears when you open a movie from Stremio's own pages.</small>
+                    <small className="hint" data-i18n="xtream_vod_hint">Adds Movies and Series catalogs. With a TMDB key the titles are linked to their IMDb pages, so the stream also appears when you open a movie from the app's own pages.</small>
                     <Field labelKey="tmdb_api_key" label="TMDB API key" hintKey="tmdb_key_hint" hint="Free at themoviedb.org → Settings → API: API key (v3) or Read Access Token (v4). Used only for your titles.">
                         <input type="password" name="tmdb_api_key" value={props.c.tmdb_api_key} autocomplete="off" />
                     </Field>
@@ -136,7 +136,7 @@ function SourceStep(props: { c: UserConfig; label?: string; edit: boolean }) {
                     {props.edit ? (
                         <>
                             <Collapsible id="vodCategoriesBox" titleKey="vod_exclude_title" title="Categories to hide">
-                                <small className="hint" data-i18n="vod_exclude_hint">Ticked categories (and their subcategories) disappear from catalogs, search and streams. Save to apply; reinstall the addon to update the filter list in Stremio.</small>
+                                <small className="hint" data-i18n="vod_exclude_hint">Ticked categories (and their subcategories) disappear from catalogs, search and streams. Save to apply; reinstall the addon to update the filter list in your app.</small>
                                 <div id="vodCategories" className="cat-list"></div>
                             </Collapsible>
                         </>
@@ -210,7 +210,7 @@ function ProxyStep(props: { c: UserConfig; masking: boolean }) {
             {props.masking ? (
                 <>
                     <Check name="mask_streams" checked={c.mask_streams} labelKey="mask_streams" label="Hide real stream URLs" />
-                    <small className="hint" data-i18n="mask_streams_hint">Stremio receives a link to this server instead of the proxy/source URL.</small>
+                    <small className="hint" data-i18n="mask_streams_hint">The app receives a link to this server instead of the proxy/source URL.</small>
                 </>
             ) : null}
         </Step>

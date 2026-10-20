@@ -27,9 +27,9 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 ### 🚀 Versione 8.5.1 (Attuale)
 
 - **Canali uniti per errore**: alcune playlist (e alcuni pannelli Xtream) usano lo stesso `tvg-id` per canali diversi, ad esempio tutti i Sky con l'id di Sky Cinema Uno, e l'addon li mostrava come flussi di un unico canale. Ora le voci con lo stesso id vengono unite solo se sono lo stesso canale (es. «Sky Cinema Uno SD», «HD», «FHD» o «4K», con il tag anche all'inizio del nome o tra parentesi); le altre diventano canali a sé, con la guida TV abbinata per nome. Un canale che raccoglie più versioni prende il nome senza la qualità («Sky Cinema Uno FHD/HD/SD» → «Sky Cinema Uno», le versioni restano nei flussi); un tag comune a tutte le versioni resta nel nome («Rai 4K»). Chi usa un file di remapping può ancora unire canali diversi di proposito.
-
 - **Flussi ordinati**: prima quelli verificati (🌐), poi quelli che la verifica rapida dal server non ha confermato (⚠️, ora con l'etichetta «non verificato» invece di «?»); sono comunque via proxy.
-- Canali separati e nomi senza qualità compaiono al prossimo aggiornamento della playlist (intervallo della configurazione o canale «Aggiorna playlist M3U»).
+- Canali separati e nomi senza qualità compaiono al prossimo aggiornamento della playlist (intervallo della configurazione o canale «Ricarica playlist»).
+- **Testi validi per tutte le app e le sorgenti**: messaggi e canali di servizio non citano più Stremio (valgono anche per Nuvio) né solo le M3U (valgono anche per gli account Xtream): «Ricarica playlist» al posto di «Ricarica playlist M3U»; i canali della categoria ⚙️ ora sono nella lingua della configurazione.
 
 ### 🚀 Versione 8.5.0
 
@@ -38,7 +38,7 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 - **Ricerca TMDB più precisa**: l'anno scritto in fondo al nome senza parentesi («VisionQuest 2026») non entra più nella ricerca né nel titolo mostrato. Se non trova, riprova senza filtro sull'anno: per le serie basta il titolo (l'anno è spesso quello della stagione), per i film solo se quel titolo appartiene a un unico film, così i remake non vengono confusi.
 - **Niente più riquadri vuoti**: le copertine del provider vengono controllate una volta e scartate se non si aprono. Ordine: locandina TMDB → copertina del provider funzionante → copertina pubblica di Stremio per l'ID IMDb → segnaposto. La scheda usa la stessa copertina del catalogo (prima, per le serie, Nuvio mostrava un riquadro nero).
 - **Segnaposto** di canali, film e serie generati da placehold.co (servizio esterno, nessun carico sul server) con font Montserrat, titolo su più righe e colori per tipo: viola i canali, rosso i film, blu petrolio le serie.
-- **Aggiornamento insieme alla playlist**: film e serie si aggiornano all'intervallo della playlist e con il canale «Aggiorna playlist M3U»; tolto il pulsante «Aggiorna ora» e il riepilogo tecnico (resta solo un eventuale errore, es. chiave TMDB non valida).
+- **Aggiornamento insieme alla playlist**: film e serie si aggiornano all'intervallo della playlist e con il canale «Ricarica playlist»; tolto il pulsante «Aggiorna ora» e il riepilogo tecnico (resta solo un eventuale errore, es. chiave TMDB non valida).
 
 **📡 Xtream**
 - **Scadenza dell'account** nel passaggio Avanzate: stato, data di scadenza con i giorni mancanti e connessioni (⚠️ se mancano 15 giorni o meno o l'account non è attivo).
@@ -305,7 +305,7 @@ Clicca su un canale per vedere:
 - Torna alla pagina di configurazione e clicca **Installa su Stremio**
 
 ### 🔧 Rigenerazione playlist e aggiornamenti rapidi
-- Nella sezione **⚙️** (filtro per genere in catalogo) trovi: **Refresh M3U playlist** (ricarica dalla sorgente), **Refresh EPG** (aggiorna la guida programmi), **Rigenera Playlist Python** (esegue lo script e ricarica la playlist). Apri il canale e segui il messaggio a schermo.
+- Nella sezione **⚙️** (filtro per genere in catalogo) trovi: **Ricarica playlist** (ricarica i canali dalla sorgente, URL M3U o account Xtream, e con film e serie attivi aggiorna anche quelli), **Aggiorna EPG** (aggiorna la guida programmi), **Rigenera Playlist Python** (esegue lo script e ricarica la playlist). Apri il canale e segui il messaggio a schermo.
 
 ## 📋 Riepilogo delle funzionalità principali
 

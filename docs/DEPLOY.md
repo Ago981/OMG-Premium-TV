@@ -220,7 +220,7 @@ themoviedb.org → Impostazioni → API; va bene la chiave v3 o il Read Access T
   secondo, un listino di 20.000 titoli richiede una decina di minuti.
 - Film e serie fanno parte della sorgente: si aggiornano insieme alla playlist, all'intervallo di
   aggiornamento della configurazione, quando si salvano account o chiave TMDB e con il canale
-  "Aggiorna playlist M3U" della configurazione. Nella pagina della configurazione compaiono avanzamento
+  "Ricarica playlist" della configurazione. Nella pagina della configurazione compaiono avanzamento
   e numero di titoli collegati. Le sincronizzazioni sono eseguite una alla volta.
 - Gli stream di film ed episodi passano dalla stessa pipeline dei canali (proxy, "Solo proxy",
   mascheramento). La chiave TMDB non compare nelle risposte dell'addon né nei log.

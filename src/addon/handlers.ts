@@ -215,8 +215,8 @@ function applyGuide(meta: ReturnType<typeof baseMeta>, guide: ChannelGuide | und
 
 function settingsMetas(cfg: UserConfig) {
     return [
-        { id: 'tv|refreshm3u', name: 'Refresh M3U playlist' },
-        { id: 'tv|refreshepg', name: 'Refresh EPG' }
+        { id: 'tv|refreshm3u', name: t('refresh_m3u_name', cfg) },
+        { id: 'tv|refreshepg', name: t('refresh_epg_name', cfg) }
     ].map(ch => ({
         id: ch.id,
         type: 'tv',
