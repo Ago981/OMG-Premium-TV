@@ -158,12 +158,7 @@ const SCHEMA_V6 = `
     UPDATE vod_items SET match_state = 0 WHERE match_state = 2;
 `;
 
-/** Canali separati per tvg-id condiviso e nomi senza qualità: le playlist salvate vanno ricostruite. */
-const SCHEMA_V7 = `
-    UPDATE playlists SET updated_at = 0 WHERE data IS NOT NULL;
-`;
-
-const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7];
+const MIGRATIONS: string[] = [SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6];
 
 function splitStatements(sql: string): string[] {
     return sql

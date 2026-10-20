@@ -29,7 +29,7 @@ Un caffè ☕ o una birra sono 🍺 un gesto di riconoscenza molto apprezzato e 
 - **Canali uniti per errore**: alcune playlist (e alcuni pannelli Xtream) usano lo stesso `tvg-id` per canali diversi, ad esempio tutti i Sky con l'id di Sky Cinema Uno, e l'addon li mostrava come flussi di un unico canale. Ora le voci con lo stesso id vengono unite solo se sono lo stesso canale (es. «Sky Cinema Uno SD», «HD», «FHD» o «4K», con il tag anche all'inizio del nome o tra parentesi); le altre diventano canali a sé, con la guida TV abbinata per nome. Un canale che raccoglie più versioni prende il nome senza la qualità («Sky Cinema Uno FHD/HD/SD» → «Sky Cinema Uno», le versioni restano nei flussi); un tag comune a tutte le versioni resta nel nome («Rai 4K»). Chi usa un file di remapping può ancora unire canali diversi di proposito.
 
 - **Flussi ordinati**: prima quelli verificati (🌐), poi quelli che la verifica rapida dal server non ha confermato (⚠️, ora con l'etichetta «non verificato» invece di «?»); sono comunque via proxy.
-- Dopo l'aggiornamento le playlist salvate vengono ricostruite una volta, così canali separati e nomi senza qualità si vedono subito.
+- Canali separati e nomi senza qualità compaiono al prossimo aggiornamento della playlist (intervallo della configurazione o canale «Aggiorna playlist M3U»).
 
 ### 🚀 Versione 8.5.0
 
