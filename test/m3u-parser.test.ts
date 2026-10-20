@@ -123,3 +123,15 @@ test('a channel with several quality versions is named without the quality tag',
     assert.equal(rai4k.name, 'Rai 4K', 'a tag shared by every version is part of the name');
     assert.equal(c5.name, 'Canale 5 HD', 'a single-version channel keeps its name');
 });
+
+test('without tvg-id, quality versions of a channel are one channel and old ids still resolve', async () => {
+    const p = new M3UParser();
+    p.add('#EXTM3U\n#EXTINF:-1,Canale 5 HD\nhttp://x/1.m3u8\n#EXTINF:-1,Canale 5 FHD\nhttp://x/2.m3u8\n#EXTINF:-1,Rai 4K\nhttp://x/3.m3u8\n');
+    const [c5, rai4k] = p.result().channels;
+    assert.equal(c5.id, 'tv|canale5');
+    assert.equal(c5.name, 'Canale 5');
+    assert.deepEqual(c5.streamInfo.urls.map(u => u.name), ['Canale 5 HD', 'Canale 5 FHD']);
+    assert.equal(rai4k.name, 'Rai 4K', 'single version keeps its full name');
+    // Un canale salvato in Stremio/Nuvio con il vecchio id ("canale5hd") viene ritrovato
+    assert.equal(looseKey('canale5hd'), looseKey(c5.id.replace('tv|', '')));
+});

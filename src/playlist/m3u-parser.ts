@@ -40,6 +40,14 @@ function qualityOf(word: string): string | null {
     return m ? m[1].toUpperCase().replace('.', '') : null;
 }
 
+/** Nome senza tag di qualità all'inizio e alla fine ("SD Rai 1", "Canale 5 FHD HEVC" → "Canale 5"). */
+export function withoutQuality(name: string): string {
+    const words = name.trim().split(/\s+/);
+    while (words.length > 1 && qualityOf(words[words.length - 1])) words.pop();
+    while (words.length > 1 && qualityOf(words[0])) words.shift();
+    return words.join(' ');
+}
+
 /**
  * Nome del canale senza i tag di qualità che distinguono le sue versioni:
  * {"Sky Cinema Uno FHD", "… HD", "… SD"} → "Sky Cinema Uno". Un tag presente in tutte le versioni
@@ -156,7 +164,8 @@ function parseExtinf(line: string, headers: StreamHeaders, idSuffix: string): Pa
     const parts = metadata.split(',');
     const name = stripDashes(parts[parts.length - 1]);
     if (tvg.name) tvg.name = stripDashes(tvg.name);
-    if (!tvg.id) tvg.id = cleanChannelName(name) + (idSuffix ? `.${idSuffix}` : '');
+    // Senza tvg-id l'id nasce dal nome senza qualità: "Canale 5 HD" e "Canale 5 FHD" sono lo stesso canale
+    if (!tvg.id) tvg.id = cleanChannelName(withoutQuality(name)) + (idSuffix ? `.${idSuffix}` : '');
     return { name, group, tvg, headers };
 }
 
@@ -217,7 +226,7 @@ export class M3UParser {
                 const name = (current.tvg.name || current.name).replace(/\s*\(.*?\)\s*/g, '').trim();
                 if (channel && !remapped && looseKey(channel.name) !== looseKey(name)) {
                     // Varianti dello stesso canale separato (HD, FHD...) finiscono insieme
-                    id = this.split.get(looseKey(name)) || normalizeId(cleanChannelName(name) + (this.idSuffix ? `.${this.idSuffix}` : ''));
+                    id = this.split.get(looseKey(name)) || normalizeId(cleanChannelName(withoutQuality(name)) + (this.idSuffix ? `.${this.idSuffix}` : ''));
                     this.split.set(looseKey(name), id);
                     channel = this.channels.get(id);
                 }
