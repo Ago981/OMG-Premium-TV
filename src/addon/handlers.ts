@@ -292,9 +292,10 @@ export async function metaHandler(ctx: AddonContext, id: string): Promise<{ meta
         id: ch.id,
         type: 'tv',
         name: ch.streamInfo?.tvg?.chno ? `${ch.streamInfo.tvg.chno}. ${ch.name}` : ch.name,
-        poster: ch.poster || ch.logo,
-        background: ch.background || ch.logo,
-        logo: ch.logo,
+        // Senza logo nella playlist: lo stesso segnaposto del catalogo anche come copertina e sfondo della scheda
+        poster: ch.poster || ch.logo || fallbackLogo(ch.name),
+        background: ch.background || ch.logo || fallbackLogo(ch.name),
+        logo: ch.logo || fallbackLogo(ch.name),
         releaseInfo: 'LIVE',
         genre: ch.genre,
         posterShape: 'square',
