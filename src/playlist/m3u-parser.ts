@@ -45,18 +45,21 @@ export function withoutQuality(name: string): string {
     const words = name.trim().split(/\s+/);
     while (words.length > 1 && qualityOf(words[words.length - 1])) words.pop();
     while (words.length > 1 && qualityOf(words[0])) words.shift();
-    return words.join(' ');
+    // Separatori rimasti in fondo dopo la sigla ("Rai 1, HD" → "Rai 1")
+    return words.join(' ').replace(/\s*[,|:–-]+$/, '').trim() || name.trim();
 }
 
 /**
- * Nome del canale quando raccoglie più versioni. Se le versioni si distinguono per la qualità,
- * il nome perde tutti i tag di qualità ({"Video Nina HD FHD", "Video Nina HD SD"} → "Video Nina");
- * se nessun tag le distingue, il tag fa parte del nome e resta ("Rai 4K" e "Rai 4K (backup)").
+ * Nome del canale nella lista: sempre senza tag di qualità ("La 7 HD" → "La 7", "TV8 HD" → "TV8");
+ * le qualità restano nei nomi dei flussi. Eccezione: 4K/UHD che lascerebbe una sola parola è parte
+ * del nome di un canale vero ("Rai 4K" resta "Rai 4K", non "Rai").
  */
-export function commonChannelName(name: string, variants: string[]): string {
-    const tagsOf = (n: string) => n.split(/\s+/).map(qualityOf).filter((t): t is string => !!t).sort().join(',');
-    const distinct = new Set(variants.map(tagsOf)).size > 1;
-    return distinct ? withoutQuality(name) : name.trim();
+export function channelDisplayName(name: string): string {
+    const plain = withoutQuality(name);
+    if (plain === name.trim()) return plain;
+    const removed = name.trim().split(/\s+/).map(qualityOf).filter((t): t is string => !!t);
+    if (!/\s/.test(plain) && removed.every(t => t === '4K' || t === 'UHD')) return name.trim();
+    return plain;
 }
 
 function cleanChannelName(name: string): string {
@@ -248,16 +251,12 @@ export class M3UParser {
             if (ch.streamInfo.urls.length > 1) {
                 ch.streamInfo.urls = ch.streamInfo.urls.filter(s => s.name !== NO_STREAM_NAME);
             }
-            // Più versioni dello stesso canale (FHD, HD, SD...): il nome del canale non porta la qualità
-            // della prima voce ("Sky Cinema Uno FHD" → "Sky Cinema Uno"); le versioni restano nei flussi
-            const names = [...new Set(ch.streamInfo.urls.map(s => s.name).filter(n => n && n !== NO_STREAM_NAME))];
-            if (names.length > 1) {
-                const plain = commonChannelName(ch.name, names);
-                if (plain && plain !== ch.name) {
-                    ch.name = plain;
-                    ch.streamInfo.tvg.name = plain;
-                    ch.description = `Channel: ${plain} - ID: ${ch.streamInfo.tvg.id}`;
-                }
+            // Nome per la lista canali senza qualità (le versioni restano nei nomi dei flussi)
+            const plain = channelDisplayName(ch.name);
+            if (plain && plain !== ch.name) {
+                ch.name = plain;
+                ch.streamInfo.tvg.name = plain;
+                ch.description = `Channel: ${plain} - ID: ${ch.streamInfo.tvg.id}`;
             }
         }
         return { channels, genres: [...this.genres], epgUrls: [...this.epgUrls] };

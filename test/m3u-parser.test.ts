@@ -121,7 +121,7 @@ test('a channel with several quality versions is named without the quality tag',
     assert.equal(uno.id, 'tv|skycinemauno.it', 'id unchanged');
     assert.deepEqual(uno.streamInfo.urls.map(u => u.name), ['Sky Cinema Uno FHD', 'Sky Cinema Uno HD', 'Sky Cinema Uno SD'], 'versions stay on the streams');
     assert.equal(rai4k.name, 'Rai 4K', 'a tag shared by every version is part of the name');
-    assert.equal(c5.name, 'Canale 5 HD', 'a single-version channel keeps its name');
+    assert.equal(c5.name, 'Canale 5', 'quality removed from the channel name even with a single version');
 });
 
 test('without tvg-id, quality versions of a channel are one channel and old ids still resolve', async () => {
@@ -131,7 +131,7 @@ test('without tvg-id, quality versions of a channel are one channel and old ids 
     assert.equal(c5.id, 'tv|canale5');
     assert.equal(c5.name, 'Canale 5');
     assert.deepEqual(c5.streamInfo.urls.map(u => u.name), ['Canale 5 HD', 'Canale 5 FHD']);
-    assert.equal(rai4k.name, 'Rai 4K', 'single version keeps its full name');
+    assert.equal(rai4k.name, 'Rai 4K', '4K that is part of the channel name stays');
     // Un canale salvato in Stremio/Nuvio con il vecchio id ("canale5hd") viene ritrovato
     assert.equal(looseKey('canale5hd'), looseKey(c5.id.replace('tv|', '')));
 });
@@ -153,4 +153,12 @@ test('Video Nina in four qualities is one channel whatever the playlist format',
         assert.equal(channels[0].name, 'Video Nina', lines[0]);
         assert.equal(channels[0].streamInfo.urls.length, 4, lines[0]);
     }
+});
+
+test('channel names in the list never carry quality tags', () => {
+    const p = new M3UParser();
+    p.add(['#EXTM3U', ...['La 7 HD', 'TV8 HD', 'NOVE HD', 'RSI La 1 HD', 'Sky Cinema Uno 1 HD', 'Rai 4K', 'Video Nina 4K']
+        .flatMap((n, i) => [`#EXTINF:-1,${n}`, `http://x/${i}.m3u8`]), ''].join('\n'));
+    assert.deepEqual(p.result().channels.map(c => c.name), ['La 7', 'TV8', 'NOVE', 'RSI La 1', 'Sky Cinema Uno 1', 'Rai 4K', 'Video Nina']);
+    assert.deepEqual(p.result().channels[0].streamInfo.urls.map(u => u.name), ['La 7 HD'], 'the stream keeps the quality');
 });

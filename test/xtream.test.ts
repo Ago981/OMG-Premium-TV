@@ -74,7 +74,7 @@ test('live channels become an M3U with provider EPG, groups and encoded credenti
     assert.equal(r.channels.length, 2, 'channels without a name are skipped');
     const [rai, sky] = r.channels;
     assert.equal(rai.id, 'tv|rai1.it');
-    assert.equal(rai.name, 'Rai 1, HD');
+    assert.equal(rai.name, 'Rai 1', 'quality removed from the channel name');
     assert.equal(rai.logo, 'https://logo/rai1.png');
     assert.deepEqual(rai.genre, ['Italia']);
     assert.equal(rai.streamInfo.urls[0].url, `${base}/live/mario/p%26ss%231/101.m3u8`);
