@@ -76,3 +76,24 @@ test('proxy type "off" keeps URL and password but streams go direct', async () =
         Object.assign(env, saved);
     }
 });
+
+test('verified streams come first, unverified ones are labelled', async () => {
+    const saved = { ...env };
+    Object.assign(env, { allowPrivateUrls: true, outboundProxy: '', outboundProxyRequired: false, streamMasking: false, proxyCheckTimeoutMs: 1000 });
+    try {
+        const ch = {
+            id: 'tv|r', name: 'Rai 1',
+            streamInfo: { urls: [
+                { url: 'https://origin.example/rai1.m3u8', name: 'RAI 1 (1)', headers: {} },
+                // link Xtream: non viene verificato, quindi conta come verificato
+                { url: 'http://p.example/live/u/p/1.m3u8', name: 'RAI 1 (2)', headers: {} }
+            ] }
+        } as unknown as Channel;
+        const config = normalizeConfig({ proxy: 'http://127.0.0.1:9', proxy_pwd: 'pwd', proxy_type: 'easyproxy', mask_streams: false, language: 'Italiano' });
+        const streams = await buildStreams(ch, { config, configId: 't', baseUrl: 'http://addon', resolver: {} as PythonResolver });
+        assert.match(streams[0].title, /RAI 1 \(2\)/);
+        assert.match(streams[1].title, /RAI 1 \(1\)[\s\S]*non verificato/);
+    } finally {
+        Object.assign(env, saved);
+    }
+});

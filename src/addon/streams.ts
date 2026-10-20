@@ -6,6 +6,7 @@ import { countryLangAbbr } from '../presets';
 import { encrypt } from '../security/crypto';
 import type { Channel, StreamHeaders, StremioStream, UserConfig } from '../types';
 import type { PythonResolver } from '../python/python-resolver';
+import { I18N } from '../web/i18n';
 import { buildProxyUrl, hasProxy, proxyLabel, XTREAM_LINK_RE, resolveProxyKind, streamType, type ProxyKind } from './proxy';
 
 /**
@@ -126,6 +127,15 @@ function directStream(input: StreamInput, cfg: UserConfig, icon = '📺', suffix
     };
 }
 
+/** Stream offerti senza che la verifica rapida sia riuscita: vanno in fondo alla lista. */
+const unverified = new WeakSet<StremioStream>();
+
+function unverifiedLabel(cfg: UserConfig): string {
+    const l = (cfg.language || '').toLowerCase();
+    const code = l.startsWith('it') ? 'it' : l.startsWith('es') ? 'es' : l.startsWith('fr') ? 'fr' : 'en';
+    return I18N[code]?.stream_unverified || I18N.en.stream_unverified || 'not verified';
+}
+
 async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyKind): Promise<StremioStream[]> {
     const cfg = ctx.config;
     if (cfg.proxy && input.url.includes(cfg.proxy)) return [];
@@ -139,22 +149,27 @@ async function proxyStreams(input: StreamInput, ctx: StreamContext, kind: ProxyK
     const type = input.clearkey ? 'DASH ClearKey' : streamType(input.url);
     const proxied: StremioStream = {
         name: input.name,
-        title: `${ok ? '🌐' : '⚠️'} ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ${type}${ok ? '' : ' · ?'}]`,
+        title: `${ok ? '🌐' : '⚠️'} ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ${type}${ok ? '' : ` · ${unverifiedLabel(cfg)}`}]`,
         url: proxyUrl,
         language: cfg.language,
         behaviorHints: { notWebReady: false, bingeGroup: 'tv' }
     };
     // Verifica fallita: lo stream via proxy si offre comunque (la verifica parte dal server, non dal player).
     // Con «Solo proxy» (predefinito) niente link diretto, che esporrebbe l'IP dell'utente.
-    if (ok || cfg.force_proxy) return [proxied];
-    return [proxied, { ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ✗ → direct]` }];
+    if (ok) return [proxied];
+    unverified.add(proxied);
+    if (cfg.force_proxy) return [proxied];
+    const direct: StremioStream = { ...directStream(input, cfg, '⚠️'), title: `⚠️ ${input.originalName}${aioSuffix(cfg)}\n[${proxyLabel(kind)} ✗ → direct]` };
+    unverified.add(direct);
+    return [proxied, direct];
 }
 
 /** Con un proxy configurato tutto passa dal proxy; senza, gli stream sono diretti (IP dell'utente). */
 async function originalStreams(inputs: StreamInput[], ctx: StreamContext, kind: ProxyKind | null): Promise<StremioStream[]> {
     if (!kind) return inputs.map(input => directStream(input, ctx.config));
-    const results = await Promise.all(inputs.map(input => proxyStreams(input, ctx, kind)));
-    return results.flat();
+    const results = (await Promise.all(inputs.map(input => proxyStreams(input, ctx, kind)))).flat();
+    // Prima gli stream verificati, poi quelli non verificati (ordine della playlist mantenuto nei due gruppi)
+    return [...results.filter(s => !unverified.has(s)), ...results.filter(s => unverified.has(s))];
 }
 
 async function resolvedStreams(channel: Channel, ctx: StreamContext): Promise<StremioStream[]> {

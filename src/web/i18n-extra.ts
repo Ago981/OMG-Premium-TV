@@ -1,6 +1,7 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        stream_unverified: "not verified",
         xtream_account: "Xtream account",
         xtream_days_left: "{n} days left",
         proxy_type_off: "Disabled",
@@ -183,6 +184,7 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        stream_unverified: "non verificato",
         xtream_account: "Account Xtream",
         xtream_days_left: "mancano {n} giorni",
         proxy_type_off: "Disattivato",
@@ -365,6 +367,7 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        stream_unverified: "no verificado",
         xtream_account: "Cuenta Xtream",
         xtream_days_left: "quedan {n} días",
         proxy_type_off: "Desactivado",
@@ -495,6 +498,7 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        stream_unverified: "non vérifié",
         xtream_account: "Compte Xtream",
         xtream_days_left: "{n} jours restants",
         proxy_type_off: "Désactivé",
