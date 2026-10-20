@@ -33,6 +33,36 @@ export function looseKey(value: unknown): string {
         .replace(/(fhd|uhd|hd|sd|4k|hevc|h265|backup)+$/, '');
 }
 
+const QUALITY_TAG = /^[[(]?(FHD|UHD|HD|SD|4K|HEVC|H\.?26[45])\+?[\])]?$/i;
+
+function qualityOf(word: string): string | null {
+    const m = word.match(QUALITY_TAG);
+    return m ? m[1].toUpperCase().replace('.', '') : null;
+}
+
+/**
+ * Nome del canale senza i tag di qualità che distinguono le sue versioni:
+ * {"Sky Cinema Uno FHD", "… HD", "… SD"} → "Sky Cinema Uno". Un tag presente in tutte le versioni
+ * fa parte del nome e resta ("Rai 4K" e "Rai 4K (backup)" → "Rai 4K").
+ */
+export function commonChannelName(name: string, variants: string[]): string {
+    const tagsOf = (n: string) => new Set(n.split(/\s+/).map(qualityOf).filter((t): t is string => !!t));
+    const variantTags = variants.map(tagsOf);
+    const distinguishing = (tag: string) => !variantTags.every(t => t.has(tag));
+    const words = name.trim().split(/\s+/);
+    while (words.length > 1) {
+        const tag = qualityOf(words[words.length - 1]);
+        if (!tag || !distinguishing(tag)) break;
+        words.pop();
+    }
+    while (words.length > 1) {
+        const tag = qualityOf(words[0]);
+        if (!tag || !distinguishing(tag)) break;
+        words.shift();
+    }
+    return words.join(' ');
+}
+
 function cleanChannelName(name: string): string {
     return name.replace(/[([].*?[)\]]/g, '').trim().toLowerCase().replace(/\s+/g, '');
 }
@@ -210,6 +240,17 @@ export class M3UParser {
         for (const ch of channels) {
             if (ch.streamInfo.urls.length > 1) {
                 ch.streamInfo.urls = ch.streamInfo.urls.filter(s => s.name !== NO_STREAM_NAME);
+            }
+            // Più versioni dello stesso canale (FHD, HD, SD...): il nome del canale non porta la qualità
+            // della prima voce ("Sky Cinema Uno FHD" → "Sky Cinema Uno"); le versioni restano nei flussi
+            const names = [...new Set(ch.streamInfo.urls.map(s => s.name).filter(n => n && n !== NO_STREAM_NAME))];
+            if (names.length > 1) {
+                const plain = commonChannelName(ch.name, names);
+                if (plain && plain !== ch.name) {
+                    ch.name = plain;
+                    ch.streamInfo.tvg.name = plain;
+                    ch.description = `Channel: ${plain} - ID: ${ch.streamInfo.tvg.id}`;
+                }
             }
         }
         return { channels, genres: [...this.genres], epgUrls: [...this.epgUrls] };

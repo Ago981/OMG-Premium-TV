@@ -95,11 +95,31 @@ test('channels sharing a tvg-id are merged only when they are the same channel',
     assert.equal(p.result().channels.length, 2);
     assert.equal(uno.id, 'tv|skycinemauno.it', 'the first channel keeps its id');
     assert.deepEqual(uno.streamInfo.urls.map(u => u.url), ['http://x/1.m3u8', 'http://x/2.m3u8']);
-    assert.equal(max.name, 'Sky Sport Max HD');
+    assert.equal(max.name, 'Sky Sport Max', 'HD and FHD versions: name without quality');
     assert.deepEqual(max.streamInfo.urls.map(u => u.url), ['http://x/3.m3u8', 'http://x/4.m3u8']);
 
     // Con il remapping l'unione resta una scelta esplicita dell'utente
     const r = new M3UParser(new Map([['a', 'same'], ['b', 'same']]));
     r.add('#EXTM3U\n#EXTINF:-1 tvg-id="a",Canale A\nhttp://x/a\n#EXTINF:-1 tvg-id="b",Canale B\nhttp://x/b\n');
     assert.equal(r.result().channels.length, 1);
+});
+
+test('a channel with several quality versions is named without the quality tag', () => {
+    const p = new M3UParser();
+    p.add([
+        '#EXTM3U',
+        '#EXTINF:-1 tvg-id="SkyCinemaUno.it",Sky Cinema Uno FHD', 'http://x/1.m3u8',
+        '#EXTINF:-1 tvg-id="SkyCinemaUno.it",Sky Cinema Uno HD', 'http://x/2.m3u8',
+        '#EXTINF:-1 tvg-id="SkyCinemaUno.it",Sky Cinema Uno SD', 'http://x/3.m3u8',
+        '#EXTINF:-1 tvg-id="Rai4K.it",Rai 4K', 'http://x/4.m3u8',
+        '#EXTINF:-1 tvg-id="Rai4K.it",Rai 4K (backup)', 'http://x/5.m3u8',
+        '#EXTINF:-1 tvg-id="Canale5.it",Canale 5 HD', 'http://x/6.m3u8',
+        ''
+    ].join('\n'));
+    const [uno, rai4k, c5] = p.result().channels;
+    assert.equal(uno.name, 'Sky Cinema Uno');
+    assert.equal(uno.id, 'tv|skycinemauno.it', 'id unchanged');
+    assert.deepEqual(uno.streamInfo.urls.map(u => u.name), ['Sky Cinema Uno FHD', 'Sky Cinema Uno HD', 'Sky Cinema Uno SD'], 'versions stay on the streams');
+    assert.equal(rai4k.name, 'Rai 4K', 'a tag shared by every version is part of the name');
+    assert.equal(c5.name, 'Canale 5 HD', 'a single-version channel keeps its name');
 });
