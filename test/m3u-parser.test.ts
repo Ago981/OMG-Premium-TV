@@ -135,3 +135,22 @@ test('without tvg-id, quality versions of a channel are one channel and old ids 
     // Un canale salvato in Stremio/Nuvio con il vecchio id ("canale5hd") viene ritrovato
     assert.equal(looseKey('canale5hd'), looseKey(c5.id.replace('tv|', '')));
 });
+
+test('Video Nina in four qualities is one channel whatever the playlist format', () => {
+    const q = ['SD', 'FHD', 'HD', '4K'];
+    const formats = [
+        q.map(v => `#EXTINF:-1,Video Nina ${v}`),
+        q.map(v => `#EXTINF:-1 tvg-id="VideoNina.it",Video Nina ${v}`),
+        q.map(v => `#EXTINF:-1,Video Nina HD ${v}`),
+        q.map(v => `#EXTINF:-1 tvg-id="VideoNina${v}.it",Video Nina ${v}`),
+        q.map(v => `#EXTINF:-1,Video Nina (${v})`)
+    ];
+    for (const lines of formats) {
+        const p = new M3UParser();
+        p.add('#EXTM3U\n' + lines.map((l, i) => `${l}\nhttp://x/${i}.m3u8`).join('\n') + '\n');
+        const channels = p.result().channels;
+        assert.equal(channels.length, 1, lines[0]);
+        assert.equal(channels[0].name, 'Video Nina', lines[0]);
+        assert.equal(channels[0].streamInfo.urls.length, 4, lines[0]);
+    }
+});

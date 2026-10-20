@@ -49,26 +49,14 @@ export function withoutQuality(name: string): string {
 }
 
 /**
- * Nome del canale senza i tag di qualità che distinguono le sue versioni:
- * {"Sky Cinema Uno FHD", "… HD", "… SD"} → "Sky Cinema Uno". Un tag presente in tutte le versioni
- * fa parte del nome e resta ("Rai 4K" e "Rai 4K (backup)" → "Rai 4K").
+ * Nome del canale quando raccoglie più versioni. Se le versioni si distinguono per la qualità,
+ * il nome perde tutti i tag di qualità ({"Video Nina HD FHD", "Video Nina HD SD"} → "Video Nina");
+ * se nessun tag le distingue, il tag fa parte del nome e resta ("Rai 4K" e "Rai 4K (backup)").
  */
 export function commonChannelName(name: string, variants: string[]): string {
-    const tagsOf = (n: string) => new Set(n.split(/\s+/).map(qualityOf).filter((t): t is string => !!t));
-    const variantTags = variants.map(tagsOf);
-    const distinguishing = (tag: string) => !variantTags.every(t => t.has(tag));
-    const words = name.trim().split(/\s+/);
-    while (words.length > 1) {
-        const tag = qualityOf(words[words.length - 1]);
-        if (!tag || !distinguishing(tag)) break;
-        words.pop();
-    }
-    while (words.length > 1) {
-        const tag = qualityOf(words[0]);
-        if (!tag || !distinguishing(tag)) break;
-        words.shift();
-    }
-    return words.join(' ');
+    const tagsOf = (n: string) => n.split(/\s+/).map(qualityOf).filter((t): t is string => !!t).sort().join(',');
+    const distinct = new Set(variants.map(tagsOf)).size > 1;
+    return distinct ? withoutQuality(name) : name.trim();
 }
 
 function cleanChannelName(name: string): string {
@@ -198,6 +186,8 @@ export class M3UParser {
     private epgUrls = new Set<string>();
     /** Canali separati da un tvg-id condiviso: chiave larga del nome → id usato */
     private split = new Map<string, string>();
+    /** Versioni con tvg-id diversi per qualità ("VideoNinaHD.it", "VideoNinaSD.it"): id e nome larghi → id usato */
+    private versions = new Map<string, string>();
 
     constructor(private readonly remap: Map<string, string> = new Map(), private readonly idSuffix = '') {}
 
@@ -229,6 +219,14 @@ export class M3UParser {
                     id = this.split.get(looseKey(name)) || normalizeId(cleanChannelName(withoutQuality(name)) + (this.idSuffix ? `.${this.idSuffix}` : ''));
                     this.split.set(looseKey(name), id);
                     channel = this.channels.get(id);
+                }
+                // tvg-id diverso solo per la qualità e stesso nome a parte la qualità: è una versione dello stesso canale
+                const versionKey = `${looseKey(id)}|${looseKey(name)}`;
+                if (!channel && !remapped && this.versions.has(versionKey)) {
+                    id = this.versions.get(versionKey) as string;
+                    channel = this.channels.get(id);
+                } else if (!remapped && !this.versions.has(versionKey)) {
+                    this.versions.set(versionKey, id);
                 }
                 if (!channel) {
                     channel = createChannel(current, id);
