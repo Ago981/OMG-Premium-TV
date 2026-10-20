@@ -43,9 +43,10 @@ function aioSuffix(cfg: UserConfig): string {
     return ` [${abbr}]`;
 }
 
-function cleanNameForImage(name: string): string {
+export function cleanNameForImage(name: string): string {
     let cleaned = name.replace(/\d{2}\/\d{2}\/\d{2}\s*-\s*\d{2}:\d{2}\s*\(CET\)/g, '').trim();
-    cleaned = cleaned.replace(/^20\d{2}\s+/, '').replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, ' ').trim();
+    // Lettere (anche accentate), numeri e i segni che fanno parte dei nomi ("Rai 1 +1", "Mediaset Italia 2", "Sky TG24 & Co.")
+    cleaned = cleaned.replace(/^20\d{2}\s+/, '').replace(/[^\p{L}\p{N}\s+&'.!-]/gu, '').replace(/\s+/g, ' ').trim();
     const parts = cleaned.split(' - ');
     if (parts.length > 1) cleaned = parts[0].trim();
     if (cleaned.length > 30) {

@@ -97,3 +97,11 @@ test('verified streams come first, unverified ones are labelled', async () => {
         Object.assign(env, saved);
     }
 });
+
+test('placeholder titles keep "+" and accented letters', async () => {
+    const { cleanNameForImage } = await import('../src/addon/handlers');
+    const { placeholderUrl } = await import('../src/web/placeholder');
+    assert.equal(cleanNameForImage('Rai 1 +1'), 'Rai 1 +1');
+    assert.equal(cleanNameForImage('Canale Società TV'), 'Canale Società TV');
+    assert.match(placeholderUrl('tv', 'Rai 1 +1'), /text=Rai%201%20%2B1$/, '"+" is encoded, not read as a space');
+});
