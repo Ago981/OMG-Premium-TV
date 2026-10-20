@@ -1,6 +1,8 @@
 /** Testi della versione multi-utente (configurazioni con id e password, pannello admin). */
 export const I18N_EXTRA: Record<string, Record<string, string>> = {
     en: {
+        manifest_description: "TV and IPTV channels from M3U playlists or Xtream accounts, with the TV guide (EPG).",
+        manifest_description_vod: "TV and IPTV channels from M3U playlists or Xtream accounts, with the TV guide (EPG), movies and TV series.",
         stream_unverified: "not verified",
         xtream_account: "Xtream account",
         xtream_days_left: "{n} days left",
@@ -184,6 +186,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'The admin password is set with ADMIN_PASSWORD and cannot be changed here.'
     },
     it: {
+        manifest_description: "Canali TV e IPTV da playlist M3U o account Xtream, con la guida TV (EPG).",
+        manifest_description_vod: "Canali TV e IPTV da playlist M3U o account Xtream, con la guida TV (EPG), film e serie TV.",
         stream_unverified: "non verificato",
         xtream_account: "Account Xtream",
         xtream_days_left: "mancano {n} giorni",
@@ -367,6 +371,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_admin_password_from_env: 'La password admin è impostata con ADMIN_PASSWORD e non si può cambiare da qui.'
     },
     es: {
+        manifest_description: "Canales de TV e IPTV desde playlists M3U o cuentas Xtream, con la guía de TV (EPG).",
+        manifest_description_vod: "Canales de TV e IPTV desde playlists M3U o cuentas Xtream, con la guía de TV (EPG), películas y series.",
         stream_unverified: "no verificado",
         xtream_account: "Cuenta Xtream",
         xtream_days_left: "quedan {n} días",
@@ -498,6 +504,8 @@ export const I18N_EXTRA: Record<string, Record<string, string>> = {
         err_invalid_interval: 'Intervalo no válido, usa HH:MM'
     },
     fr: {
+        manifest_description: "Chaînes TV et IPTV depuis des playlists M3U ou des comptes Xtream, avec le guide TV (EPG).",
+        manifest_description_vod: "Chaînes TV et IPTV depuis des playlists M3U ou des comptes Xtream, avec le guide TV (EPG), films et séries.",
         stream_unverified: "non vérifié",
         xtream_account: "Compte Xtream",
         xtream_days_left: "{n} jours restants",

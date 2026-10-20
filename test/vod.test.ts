@@ -186,6 +186,7 @@ describe('xtream movies and series', { skip: base ? false : 'TEST_DATABASE_URL n
         assert.deepEqual(catalogs.map(c => [c.type, c.name]), [['tv', 'OMG+ TV'], ['movie', 'OMG+ TV'], ['series', 'OMG+ TV']], 'same name as the channel catalog');
         const named = await manifestHandler({ ...ctx, record: { ...record, label: 'IPTV' } });
         assert.equal(named.name, 'OMG+ TV - IPTV', 'addon and catalogs share the same base name');
+        assert.equal(named.description, 'Canali TV e IPTV da playlist M3U o account Xtream, con la guida TV (EPG), film e serie TV.', 'description in the configuration language');
         assert.ok((named.catalogs as { name: string }[]).every(c => c.name === 'OMG+ TV - IPTV'));
 
         const { metas } = await vodCatalog(ctx, 'movie', {}) as { metas: { id: string; name: string }[] };
