@@ -295,6 +295,47 @@ function toProgram(r: { title: string; description: string | null; category: str
     };
 }
 
+/** I canali delle guide per nome, e ripuliti per lo smart matching (vedi epgCandidates). */
+export interface EpgIndex {
+    byName: Map<string, string[]>;
+    cleaned: Array<{ channel_id: string; clean_id: string; clean_name: string }> | null;
+}
+
+export function epgIndex(rows: Array<{ channel_id: string; name_key: string | null }>, smart: boolean): EpgIndex {
+    const byName = new Map<string, string[]>();
+    for (const r of rows) {
+        if (!r.name_key) continue;
+        // Tutti i canali con quel nome (di più guide, o ripetuti): non solo il primo, che può essere senza programmi
+        const list = byName.get(r.name_key) || [];
+        if (!list.includes(r.channel_id)) list.push(r.channel_id);
+        byName.set(r.name_key, list);
+    }
+    const cleaned = smart
+        ? rows.map(r => ({ channel_id: r.channel_id, clean_id: cleanKey(r.channel_id), clean_name: cleanKey(r.name_key || undefined) }))
+        : null;
+    return { byName, cleaned };
+}
+
+/**
+ * I canali della guida da provare per `ch`, in ordine: quelli del tvg-id (`byId`), poi quelli col suo stesso nome
+ * ("Film Top - Rakuten TV" ↔ <display-name>Film Top - Rakuten TV</display-name>, anche se gli id non c'entrano),
+ * poi con lo smart matching quelli con nome o id uguali una volta ripuliti, o che iniziano così. Anche quando il
+ * canale ha un tvg-id: senza, la playlist gliene dà uno ricavato dal nome, che di solito nella guida non c'è.
+ */
+export function epgCandidates(ch: ChannelQuery, byId: string[], index: EpgIndex): string[] {
+    const ids = [...byId];
+    const add = (id: string) => { if (!ids.includes(id)) ids.push(id); };
+    (index.byName.get(normalizeId(ch.name)) || []).forEach(add);
+    if (index.cleaned) {
+        const tokens = [cleanKey(ch.tvgId), cleanKey(ch.name)].filter(t => t.length >= 2);
+        const exact = index.cleaned.find(e => tokens.some(tok => e.clean_id === tok || e.clean_name === tok));
+        if (exact) add(exact.channel_id);
+        const prefix = index.cleaned.find(e => tokens.some(tok => tok.length >= 3 && (e.clean_id.startsWith(tok) || e.clean_name.startsWith(tok))));
+        if (prefix) add(prefix.channel_id);
+    }
+    return ids;
+}
+
 /**
  * Guida di più canali con poche query ottimizzate.
  * Con smart_epg=true (default) abbina in modo permissivo rimuovendo suffissi di risoluzione (HD/SD/4K/numeri).
@@ -311,13 +352,10 @@ export async function getGuides(
 
     const candidates = new Map<string, string[]>();
     const allIds = new Set<string>();
-    const names = new Set<string>();
     for (const ch of channels) {
         const ids = lookupIds(ch.tvgId);
         candidates.set(ch.key, ids);
         ids.forEach(i => allIds.add(i));
-        const nk = normalizeId(ch.name);
-        if (nk) names.add(nk);
     }
 
     // Carica i canali EPG dalle sorgenti attive per il fallback e lo smart matching
@@ -326,43 +364,12 @@ export async function getGuides(
         sourceIds
     );
 
-    const byName = new Map<string, { channel_id: string; icon: string | null }>();
-    const preparedEpgChannels: Array<{ channel_id: string; clean_id: string; clean_name: string }> = [];
+    const index = epgIndex(epgChannels, smartEpg);
 
-    for (const r of epgChannels) {
-        if (r.name_key && !byName.has(r.name_key)) byName.set(r.name_key, { channel_id: r.channel_id, icon: r.icon });
-        if (smartEpg) {
-            preparedEpgChannels.push({
-                channel_id: r.channel_id,
-                clean_id: cleanKey(r.channel_id),
-                clean_name: cleanKey(r.name_key || undefined)
-            });
-        }
-    }
-
-    // Risoluzione canali
+    // Risoluzione canali: per tvg-id, poi per nome, poi (smart) per nome e id ripuliti. Vince il primo che ha programmi.
     for (const ch of channels) {
-        const ids = candidates.get(ch.key) || [];
-        const named = byName.get(normalizeId(ch.name));
-        if (named && !ids.includes(named.channel_id)) ids.push(named.channel_id);
-
-        if (smartEpg && ids.length === 0) {
-            const cleanTvg = cleanKey(ch.tvgId);
-            const cleanN = cleanKey(ch.name);
-            const searchTokens = [cleanTvg, cleanN].filter(t => t.length >= 2);
-
-            let smartHit = preparedEpgChannels.find(e =>
-                searchTokens.some(tok => e.clean_id === tok || e.clean_name === tok)
-            );
-            if (!smartHit) {
-                smartHit = preparedEpgChannels.find(e =>
-                    searchTokens.some(tok => tok.length >= 3 && (e.clean_id.startsWith(tok) || e.clean_name.startsWith(tok)))
-                );
-            }
-            if (smartHit && !ids.includes(smartHit.channel_id)) {
-                ids.push(smartHit.channel_id);
-            }
-        }
+        const ids = epgCandidates(ch, candidates.get(ch.key) || [], index);
+        candidates.set(ch.key, ids);
         ids.forEach(i => allIds.add(i));
     }
 
@@ -397,7 +404,7 @@ export async function getGuides(
         const picked = pickPrograms(list, now, upcomingCount);
         const currentRow = picked.current;
         const upcoming = picked.upcoming.map(toProgram);
-        const icon = ids.map(i => iconByChannel.get(i)).find(Boolean) || null;
+        const icon = (hit && iconByChannel.get(hit)) || ids.map(i => iconByChannel.get(i)).find(Boolean) || null;
         if (currentRow || upcoming.length || icon) {
             out.set(ch.key, { current: currentRow ? toProgram(currentRow) : null, upcoming, icon });
         }
