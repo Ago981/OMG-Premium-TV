@@ -5,6 +5,7 @@ import * as logger from '../logger';
 import { normalizeId } from '../playlist/m3u-parser';
 import type { Program } from '../types';
 import { parseXmltv } from './xmltv-parser';
+import { pickPrograms } from './programs';
 
 /**
  * EPG centralizzato: ogni URL EPG è una "sorgente" scaricata una sola volta e condivisa da tutte
@@ -369,8 +370,8 @@ export async function getGuides(
 
     const idList = [...allIds];
     const now = Date.now();
-    const programs = await db().all<{ channel_id: string; title: string; description: string | null; category: string | null; start_time: number; stop_time: number }>(
-        `SELECT channel_id, title, description, category, start_time, stop_time FROM epg_programs
+    const programs = await db().all<{ source_id: number; channel_id: string; title: string; description: string | null; category: string | null; start_time: number; stop_time: number }>(
+        `SELECT source_id, channel_id, title, description, category, start_time, stop_time FROM epg_programs
          WHERE source_id IN (${inList(sourceIds)}) AND channel_id IN (${inList(idList)})
            AND stop_time > ? AND start_time < ?
          ORDER BY channel_id, start_time`,
@@ -393,8 +394,9 @@ export async function getGuides(
         const ids = [...(candidates.get(ch.key) || [])];
         const hit = ids.find(i => progByChannel.has(i));
         const list = hit ? progByChannel.get(hit) as typeof programs : [];
-        const currentRow = list.find(p => p.start_time <= now && p.stop_time > now) || null;
-        const upcoming = list.filter(p => p.start_time >= now).slice(0, upcomingCount).map(toProgram);
+        const picked = pickPrograms(list, now, upcomingCount);
+        const currentRow = picked.current;
+        const upcoming = picked.upcoming.map(toProgram);
         const icon = ids.map(i => iconByChannel.get(i)).find(Boolean) || null;
         if (currentRow || upcoming.length || icon) {
             out.set(ch.key, { current: currentRow ? toProgram(currentRow) : null, upcoming, icon });
