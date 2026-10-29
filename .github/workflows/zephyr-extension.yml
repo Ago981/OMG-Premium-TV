@@ -1,0 +1,55 @@
+# Builds OMG Premium TV's Zephyr TV extension (zephyr/) and publishes it as a GitHub release: the .zip and the
+# manifest-zephyrtv.json that Zephyr TV installs and updates it from
+# (https://github.com/mccoy88f/OMG-Premium-TV/releases/latest/download/manifest-zephyrtv.json).
+# Runs when a zephyr-v* tag is pushed (zephyr-v1.0.1: version 1.0.1 of zephyr/manifest.json), or by hand from the
+# Actions tab, which tags the commit itself with the manifest's version.
+name: Zephyr TV extension
+
+on:
+  push:
+    tags: ['zephyr-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Version
+        id: version
+        run: |
+          version=$(node -p 'require("./zephyr/manifest.json").version')
+          tag="zephyr-v$version"
+          # A pushed tag must be the manifest's version: the release and what Zephyr TV reads in it must agree.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "$tag" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} is not zephyr/manifest.json's version ($version)"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: sh zephyr/build.sh
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=${{ steps.version.outputs.tag }}
+          notes="OMG Premium TV as a Zephyr TV extension, version ${{ steps.version.outputs.version }}.
+
+          Zephyr TV: Settings → Extra features → Extensions → Add an extension, with this address:
+          https://github.com/${{ github.repository }}/releases/latest/download/manifest-zephyrtv.json"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist-zephyr/omg-premium-tv-zephyr.zip dist-zephyr/manifest-zephyrtv.json --clobber
+          else
+            gh release create "$tag" dist-zephyr/omg-premium-tv-zephyr.zip dist-zephyr/manifest-zephyrtv.json \
+              --target "${{ github.sha }}" --title "OMG Premium TV for Zephyr TV ${{ steps.version.outputs.version }}" --notes "$notes" --latest
+          fi

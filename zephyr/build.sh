@@ -6,7 +6,9 @@ cd "$(dirname "$0")"
 out=../dist-zephyr
 rm -rf "$out" && mkdir -p "$out"
 zip -q -X "$out/omg-premium-tv-zephyr.zip" manifest.json main.js icon.png
-sha=$(shasum -a 256 "$out/omg-premium-tv-zephyr.zip" | cut -d' ' -f1)
+# shasum on macOS, sha256sum on Linux (the release Action)
+if command -v sha256sum >/dev/null; then sha=$(sha256sum "$out/omg-premium-tv-zephyr.zip" | cut -d' ' -f1)
+else sha=$(shasum -a 256 "$out/omg-premium-tv-zephyr.zip" | cut -d' ' -f1); fi
 node -e '
 const m = require("./manifest.json");
 const out = { zephyr: m.zephyr, id: m.id, version: m.version, name: m.name, description: m.description, author: m.author,
