@@ -19,7 +19,7 @@ const TEXTS = {
     proxy: "Proxy", proxyInfo: "Facoltativo: un proxy MediaFlow o EasyProxy da cui far passare gli stream.",
     proxyUrl: "Indirizzo del proxy", proxyPassword: "Password del proxy", proxyType: "Tipo di proxy", auto: "Automatico",
     proxyOnly: "Solo tramite proxy", guide: "Guida TV delle playlist",
-    playlist: "Playlist", channels: "Canali", films: "Film", series: "Serie TV", viaProxy: "Proxy",
+    playlist: "Playlist", channels: "Canali", films: "Film", series: "Serie TV", viaProxy: "Proxy", radio: "Radio",
   },
   en: {
     playlists: "M3U playlists", playlistsInfo: "One or more M3U/M3U8 playlists: channels, groups, logos and TV guide.",
@@ -30,7 +30,7 @@ const TEXTS = {
     proxy: "Proxy", proxyInfo: "Optional: a MediaFlow or EasyProxy proxy the streams go through.",
     proxyUrl: "Proxy address", proxyPassword: "Proxy password", proxyType: "Proxy type", auto: "Automatic",
     proxyOnly: "Through the proxy only", guide: "The playlists' TV guide",
-    playlist: "Playlist", channels: "Channels", films: "Films", series: "TV Series", viaProxy: "Proxy",
+    playlist: "Playlist", channels: "Channels", films: "Films", series: "TV Series", viaProxy: "Proxy", radio: "Radio",
   },
 };
 const T = (k) => (TEXTS[(globalThis.zephyr && zephyr.language) || "en"] || TEXTS.en)[k] || TEXTS.en[k] || k;
@@ -142,7 +142,10 @@ async function ensure(src) {
     if (kept && Date.now() - kept.at < LIVE_MAX_AGE * 1000) return kept.summary;
   } catch (e) { /* read again */ }
   const summary = await zephyr.m3u.load(src.key, { text: await xtreamM3u(a) });
-  try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), summary: { channels: summary.channels, groups: summary.groups, guides: [] } })); } catch (e) { /* full */ }
+  try {
+    localStorage.setItem(key, JSON.stringify({ at: Date.now(), summary: { channels: summary.channels, groups: summary.groups,
+      radios: summary.radios, radioGroups: summary.radioGroups, guides: [] } }));
+  } catch (e) { /* full */ }
   return summary;
 }
 
@@ -224,13 +227,13 @@ async function streamsOf(s, list) {
 }
 
 // ---------- ids ----------
-// A channel: "omg:<source>:<channel id>". A film: "omg:xm<j>:<id>:<extension>". A series: "omg:xs<j>:<id>",
+// A channel or radio station: "omg:<source>:<channel id>". A film: "omg:xm<j>:<id>:<extension>". A series: "omg:xs<j>:<id>",
 // its episodes "omg:xs<j>:<id>:<season>:<episode>".
 
 const split = (id) => String(id).split(":");
 
 function channelMeta(src, c) {
-  return { id: `omg:${src.key}:${c.id}`, type: "tv", name: c.name, logo: c.logo || undefined, poster: c.logo || undefined,
+  return { id: `omg:${src.key}:${c.id}`, type: c.radio ? "radio" : "tv", name: c.name, logo: c.logo || undefined, poster: c.logo || undefined,
     genres: c.groups, epgId: c.epgId };
 }
 
@@ -266,10 +269,18 @@ module.exports = {
     const s = settingsOf(a);
     const catalogs = [];
     for (const src of sources(s)) {
-      let groups = [];
-      try { groups = arr((await ensure(src)).groups); } catch (e) { console.warn(`${src.name}: ${e.message}`); }
-      catalogs.push({ type: "tv", id: `omg-${src.key}`, name: src.name,
-        extra: [{ name: "genre", options: groups }, { name: "search" }, { name: "skip" }] });
+      let sum = {};
+      try { sum = await ensure(src); } catch (e) { console.warn(`${src.name}: ${e.message}`); }
+      // Radio stations (radio="true") apart, when this Zephyr TV counts them (its summary has "radios").
+      const apart = typeof sum.radios === "number";
+      if (!apart || sum.channels > 0) {
+        catalogs.push({ type: "tv", id: `omg-${src.key}`, name: src.name,
+          extra: [{ name: "genre", options: arr(sum.groups) }, { name: "search" }, { name: "skip" }] });
+      }
+      if (apart && sum.radios > 0) {
+        catalogs.push({ type: "radio", id: `omg-${src.key}-radio`, name: `${src.name} · ${T("radio")}`,
+          extra: [{ name: "genre", options: arr(sum.radioGroups) }, { name: "search" }, { name: "skip" }] });
+      }
     }
     for (const acc of accounts(s).filter((x) => x.vod)) {
       const films = await vodCategories(acc, "movie").catch(() => []);
@@ -286,11 +297,12 @@ module.exports = {
     const s = settingsOf(a);
     const extra = a.extra || {};
     const skip = Number(extra.skip) || 0;
-    const key = String(a.id).replace(/^omg-/, "");
-    if (a.type === "tv") {
+    const key = String(a.id).replace(/^omg-/, "").replace(/-radio$/, "");
+    if (a.type === "tv" || a.type === "radio") {
       const src = sourceOf(s, key);
-      await ensure(src);
-      const list = await zephyr.m3u.channels(src.key, { group: extra.genre || "", search: extra.search || "", skip, limit: PAGE });
+      const sum = await ensure(src);
+      const kind = typeof sum.radios === "number" ? a.type : "";
+      const list = await zephyr.m3u.channels(src.key, { kind, group: extra.genre || "", search: extra.search || "", skip, limit: PAGE });
       return { metas: arr(list).map((c) => channelMeta(src, c)) };
     }
     const kind = a.type === "movie" ? "movie" : "series";
@@ -310,7 +322,7 @@ module.exports = {
   async meta(a) {
     const s = settingsOf(a);
     const p = split(a.id);
-    if (a.type === "tv") {
+    if (a.type === "tv" || a.type === "radio") {
       const src = sourceOf(s, p[1]);
       await ensure(src);
       const c = await zephyr.m3u.channel(src.key, p.slice(2).join(":"));
@@ -345,7 +357,7 @@ module.exports = {
   async stream(a) {
     const s = settingsOf(a);
     const p = split(a.id);
-    if (a.type === "tv") {
+    if (a.type === "tv" || a.type === "radio") {
       const src = sourceOf(s, p[1]);
       await ensure(src);
       const c = await zephyr.m3u.channel(src.key, p.slice(2).join(":"));
