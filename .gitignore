@@ -31,3 +31,4 @@ Thumbs.db
 # Docker: ignore local override only (Dockerfile and docker-install docs are committed)
 # docker-compose.override.yml
 # .dockerignore is committed (used at build time)
+dist-zephyr/
