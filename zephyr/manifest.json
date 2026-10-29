@@ -1,7 +1,7 @@
 {
   "zephyr": 1,
   "id": "io.github.mccoy88f.omg-premium-tv",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "name": "OMG Premium TV",
   "description": "TV channels and radio stations from M3U playlists and Xtream Codes accounts, with films and series, TV guide and proxy.",
   "author": "mccoy88f",

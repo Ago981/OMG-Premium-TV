@@ -19,6 +19,7 @@ const TEXTS = {
     proxy: "Proxy", proxyInfo: "Facoltativo: un proxy MediaFlow o EasyProxy da cui far passare gli stream.",
     proxyUrl: "Indirizzo del proxy", proxyPassword: "Password del proxy", proxyType: "Tipo di proxy", auto: "Automatico",
     proxyOnly: "Solo tramite proxy", guide: "Guida TV delle playlist",
+    forceRadio: "Forza riconoscimento Radio", forceRadioInfo: "I canali con la parola «radio» nel nome, e tutti quelli di un gruppo con «radio» nel nome, diventano radio, anche se la playlist non lo dice.",
     playlist: "Playlist", channels: "Canali", films: "Film", series: "Serie TV", viaProxy: "Proxy", radio: "Radio",
   },
   en: {
@@ -30,6 +31,7 @@ const TEXTS = {
     proxy: "Proxy", proxyInfo: "Optional: a MediaFlow or EasyProxy proxy the streams go through.",
     proxyUrl: "Proxy address", proxyPassword: "Proxy password", proxyType: "Proxy type", auto: "Automatic",
     proxyOnly: "Through the proxy only", guide: "The playlists' TV guide",
+    forceRadio: "Force radio recognition", forceRadioInfo: "Channels with the word \"radio\" in their name, and all those of a group with \"radio\" in its name, become radio stations, even when the playlist doesn't say so.",
     playlist: "Playlist", channels: "Channels", films: "Films", series: "TV Series", viaProxy: "Proxy", radio: "Radio",
   },
 };
@@ -124,27 +126,54 @@ async function vodCategories(a, kind) {
 
 // ---------- live sources ----------
 
-/** The live sources: each playlist ("p<i>"), each account ("x<j>"). */
+/** The live sources: each playlist ("p<i>"), each account ("x<j>"); [force]: radio stations recognised by name. */
 function sources(s) {
+  const force = s.forceRadio !== false;
   return [
-    ...playlists(s).map((p) => ({ key: `p${p.i}`, name: p.name, playlist: p })),
-    ...accounts(s).map((a) => ({ key: `x${a.j}`, name: a.name, account: a })),
+    ...playlists(s).map((p) => ({ key: `p${p.i}`, name: p.name, playlist: p, force })),
+    ...accounts(s).map((a) => ({ key: `x${a.j}`, name: a.name, account: a, force })),
   ];
 }
 
-/** Makes sure Zephyr TV has the source's playlist: read again when old. Its summary (channels, groups, guides). */
+const RADIO_WORD = /(^|[^\p{L}\p{N}])radio([^\p{L}\p{N}]|$)/iu;
+
+/**
+ * [text], a playlist, with radio="true" on the channels whose name has the word "radio" ("Radio Norba", not
+ * "RadioVisione"), and on all those of a group whose name has it ("Radio", "Radio locali").
+ */
+function tagRadios(text) {
+  return text.split("\n").map((line) => {
+    if (!line.startsWith("#EXTINF:") || /\sradio\s*=/i.test(line)) return line;
+    const name = line.slice(line.lastIndexOf(",") + 1);
+    const tvgName = (line.match(/tvg-name="([^"]*)"/) || [])[1] || "";
+    const groups = ((line.match(/group-title="([^"]*)"/) || [])[1] || "").split(";");
+    if (!RADIO_WORD.test(name) && !RADIO_WORD.test(tvgName) && !groups.some((g) => RADIO_WORD.test(g))) return line;
+    return line.replace(/^#EXTINF:(\S*)/, '#EXTINF:$1 radio="true"');
+  }).join("\n");
+}
+
+/**
+ * Makes sure Zephyr TV has the source's playlist: read again when old. Its summary (channels, groups, guides). A
+ * playlist read by Zephyr TV itself, unless its radio stations are recognised by name: then it's downloaded here,
+ * tagged and handed over as text (kept a few hours, as an account's).
+ */
 async function ensure(src) {
-  if (src.playlist) return zephyr.m3u.load(src.key, { url: src.playlist.url, maxAge: LIVE_MAX_AGE });
-  const a = src.account;
-  const key = `live:${src.key}:${a.server}:${a.username}`;
+  if (src.playlist && !src.force) return zephyr.m3u.load(src.key, { url: src.playlist.url, maxAge: LIVE_MAX_AGE });
+  const key = src.playlist ? `list:${src.key}:${src.playlist.url}:${src.force}` : `live:${src.key}:${src.account.server}:${src.account.username}:${src.force}`;
   try {
     const kept = JSON.parse(localStorage.getItem(key) || "null");
     if (kept && Date.now() - kept.at < LIVE_MAX_AGE * 1000) return kept.summary;
   } catch (e) { /* read again */ }
-  const summary = await zephyr.m3u.load(src.key, { text: await xtreamM3u(a) });
+  let text;
+  if (src.playlist) {
+    const r = await fetch(src.playlist.url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    text = await r.text();
+  } else text = await xtreamM3u(src.account);
+  const summary = await zephyr.m3u.load(src.key, { text: src.force ? tagRadios(text) : text });
   try {
     localStorage.setItem(key, JSON.stringify({ at: Date.now(), summary: { channels: summary.channels, groups: summary.groups,
-      radios: summary.radios, radioGroups: summary.radioGroups, guides: [] } }));
+      radios: summary.radios, radioGroups: summary.radioGroups, guides: src.playlist ? arr(summary.guides) : [] } }));
   } catch (e) { /* full */ }
   return summary;
 }
@@ -262,6 +291,7 @@ module.exports = {
         { label: T("auto"), value: "auto" }, { label: "MediaFlow", value: "mediaflow" }, { label: "EasyProxy", value: "easyproxy" }], defaultValue: "auto" },
       { type: "toggle", key: "proxyOnly", label: T("proxyOnly"), defaultValue: false },
       { type: "toggle", key: "playlistGuide", label: T("guide"), defaultValue: true },
+      { type: "toggle", key: "forceRadio", label: T("forceRadio"), description: T("forceRadioInfo"), defaultValue: true },
     ];
   },
 
